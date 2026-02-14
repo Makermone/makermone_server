@@ -1,19 +1,27 @@
 import os
 import requests
 from flask import Flask, request, jsonify
+from dotenv import load_dotenv  # 추가
+from pathlib import Path
+
+# .env 파일의 내용을 환경 변수로 로드
+load_dotenv()  # 추가
+
+# 현재 파일의 위치를 기준으로 경로 설정
+BASE_DIR = Path(__file__).resolve().parent
+DATA_FILE = BASE_DIR / "makermone_data.txt"
 
 app = Flask(__name__)
 
 # [중요] 성공한 만능 열쇠 (FSSE)
-API_KEY = "AIzaSyAm5ujE6r-Kat5AmKYgewJyDGMLF3rFSSE"
-
+API_KEY = os.getenv("GOOGLE_API_KEY")
 # [중요] 성공한 최신 모델 (Gemini 2.0 Flash)
 GEMINI_URL = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={API_KEY}"
 
 # --- [1. 지식 파일 읽어오기] ---
 def load_knowledge():
     try:
-        with open('makermon_data.txt', 'r', encoding='utf-8') as f:
+        with open(DATA_FILE, 'r', encoding='utf-8') as f:
             return f.read()
     except Exception as e:
         return "회사 정보 파일이 없습니다."
