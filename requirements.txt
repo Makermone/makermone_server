@@ -1,4 +1,4 @@
-flask
+streamlit
 requests
-python-dotenv
 google-generativeai
+python-dotenv
