@@ -8,8 +8,20 @@ from dotenv import load_dotenv
 load_dotenv() 
 GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
 
+# --- 2. 페이지 기본 설정 ---
 st.set_page_config(page_title="메이커몬 PM 포털", page_icon="🤖", layout="wide")
 
+# [완벽 위장술] Streamlit 기본 메뉴, 헤더, 푸터 완전히 숨기기
+hide_st_style = """
+            <style>
+            #MainMenu {visibility: hidden;}
+            footer {visibility: hidden;}
+            header {visibility: hidden;}
+            </style>
+            """
+st.markdown(hide_st_style, unsafe_allow_html=True)
+
+# ... (이하 기존 코드 동일)
 if not GOOGLE_API_KEY:
     st.error("🚨 환경 변수에 GOOGLE_API_KEY가 설정되지 않았습니다.")
     st.stop()
