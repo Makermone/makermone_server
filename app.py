@@ -130,7 +130,7 @@ if prompt := st.chat_input(prompt_placeholder):
     # 💡 [심장 3 패치] 사용자가 질문을 치자마자 백그라운드에서 구글 시트로 쏴줍니다!
     try:
         # GAS_URL은 이전에 설정해둔 구글 스크립트 배포 주소를 그대로 사용합니다.
-        GAS_URL = "https://script.google.com/macros/s/AKfycbz4JTFsXbdKMiLhG2X9GepP1ZiNjFu7cYTUsQIAlZmtL0k3FudVkzNdwK4On7FhZavM/exec"
+        GAS_URL = "https://script.google.com/macros/s/AKfycbz4JTfSxbdKMILhG2X9GepP1ZiNjFu7cYTUsqIALZmtL0k3FudVkzNdwK40n7FhZavM/exec"
         log_url = f"{GAS_URL}?action=log_inquiry&client_code={client_code}&query={prompt}"
         requests.get(log_url, timeout=2) # 챗봇 속도에 영향을 안 주도록 2초만 던지고 맙니다.
     except:
