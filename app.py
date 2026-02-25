@@ -121,10 +121,22 @@ for message in st.session_state.chat_session.history:
 # 모드에 따라 입력창 문구 변경
 prompt_placeholder = "메이커몬에 대해 궁금한 점을 입력하세요..." if client_code == "GUEST" else "메이커몬 PM에게 질문을 입력하세요... (예: 목업 진행상황 알려줘)"
 
+# (app.py 맨 아래 부분 수정)
+
 if prompt := st.chat_input(prompt_placeholder):
     with st.chat_message("user"):
         st.markdown(prompt)
         
+    # 💡 [심장 3 패치] 사용자가 질문을 치자마자 백그라운드에서 구글 시트로 쏴줍니다!
+    try:
+        # GAS_URL은 이전에 설정해둔 구글 스크립트 배포 주소를 그대로 사용합니다.
+        GAS_URL = "https://script.google.com/macros/s/AKfycbz4JTFsXbdKMiLhG2X9GepP1ZiNjFu7cYTUsQIAlZmtL0k3FudVkzNdwK4On7FhZavM/exec"
+        log_url = f"{GAS_URL}?action=log_inquiry&client_code={client_code}&query={prompt}"
+        requests.get(log_url, timeout=2) # 챗봇 속도에 영향을 안 주도록 2초만 던지고 맙니다.
+    except:
+        pass # 구글 전송에 실패해도 챗봇 응답은 정상적으로 작동해야 하므로 그냥 패스!
+
+    # (이 아래로는 기존과 동일하게 AI가 답변을 작성하는 로직 유지)
     with st.chat_message("assistant"):
         spinner_msg = "메이커몬 AI가 답변을 작성 중입니다..." if client_code == "GUEST" else "PM이 원장 데이터를 꼼꼼히 스캔 중입니다..."
         with st.spinner(spinner_msg):
