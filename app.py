@@ -43,7 +43,8 @@ if client_code == "GUEST":
 
     st.title("🤖 메이커몬 AI 어시스턴트")
     st.markdown("안녕하세요!")
-    st.markdown("1인 운영 AI 자동화 Micro-Factory 플랫폼 메이커몬입니다. 무엇이든 편하게 물어보세요.")
+    st.markdown("1인 운영 AI 자동화 Micro-Factory 플랫폼 메이커몬입니다.")
+    st.markdown("무엇이든 편하게 물어보세요.")
     st.markdown("---")
 
     system_instruction = """
