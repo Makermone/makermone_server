@@ -126,24 +126,35 @@ prompt_placeholder = "메이커몬에 대해 궁금한 점을 입력하세요...
 # (app.py 맨 아래 부분 수정)
 
 if prompt := st.chat_input(prompt_placeholder):
+    # 1. 고객 질문 화면에 출력
     with st.chat_message("user"):
         st.markdown(prompt)
         
-    # 💡 [심장 3 패치] 사용자가 질문을 치자마자 백그라운드에서 구글 시트로 쏴줍니다!
-    try:
-        # GAS_URL은 이전에 설정해둔 구글 스크립트 배포 주소를 그대로 사용합니다.
-        GAS_URL = "https://script.google.com/macros/s/AKfycbz4JTfSxbdKMILhG2X9GepP1ZiNjFu7cYTUsqIALZmtL0k3FudVkzNdwK40n7FhZavM/exec"
-        log_url = f"{GAS_URL}?action=log_inquiry&client_code={client_code}&query={prompt}"
-        requests.get(log_url, timeout=2) # 챗봇 속도에 영향을 안 주도록 2초만 던지고 맙니다.
-    except:
-        pass # 구글 전송에 실패해도 챗봇 응답은 정상적으로 작동해야 하므로 그냥 패스!
-
-    # (이 아래로는 기존과 동일하게 AI가 답변을 작성하는 로직 유지)
+    # 2. AI 대답 생성 및 출력
     with st.chat_message("assistant"):
         spinner_msg = "메이커몬 AI가 답변을 작성 중입니다..." if client_code == "GUEST" else "PM이 원장 데이터를 꼼꼼히 스캔 중입니다..."
         with st.spinner(spinner_msg):
             try:
+                # 챗봇이 생각하고 대답을 뱉어냅니다.
                 response = st.session_state.chat_session.send_message(prompt)
-                st.markdown(response.text)
+                answer_text = response.text
+                st.markdown(answer_text)
+                
+                # 💡 [도청기 장착] 질문과 '대답'을 묶어서 구글 시트로 조용히 쏩니다!
+                # 캡처본에 있던 대표님의 배포 URL을 그대로 적용했습니다.
+                GAS_URL = "https://script.google.com/macros/s/AKfycbz4JTFsXbdKMiLhG2X9GepP1ZiNjFu7cYTUsQIAlZmtL0k3FudVkzNdwK4On7FhZavM/exec"
+                payload = {
+                    "action": "log_inquiry",
+                    "client_code": client_code,
+                    "query": prompt,
+                    "answer": answer_text # AI가 방금 한 대답(text)을 통째로 추가!
+                }
+                
+                # 챗봇 속도에 영향을 주지 않도록 2초만 던지고 빠집니다.
+                try:
+                    requests.post(GAS_URL, json=payload, timeout=2)
+                except:
+                    pass
+                    
             except Exception as e:
                 st.error(f"AI 응답 에러: {e}")
