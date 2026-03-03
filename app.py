@@ -142,7 +142,7 @@ if prompt := st.chat_input(prompt_placeholder):
                 
                 # 💡 [도청기 장착] 질문과 '대답'을 묶어서 구글 시트로 조용히 쏩니다!
                 # 캡처본에 있던 대표님의 배포 URL을 그대로 적용했습니다.
-                GAS_URL = "https://script.google.com/macros/s/AKfycbz4JTFsXbdKMiLhG2X9GepP1ZiNjFu7cYTUsQIAlZmtL0k3FudVkzNdwK4On7FhZavM/exec"
+                GAS_URL = "https://script.google.com/macros/s/AKfycbz4JTfSxbdKMILhG2X9GepP1ZiNjFu7cYTUsqIALZmtL0k3FudVkzNdwK40n7FhZavM/exec"
                 payload = {
                     "action": "log_inquiry",
                     "client_code": client_code,
