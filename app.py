@@ -157,8 +157,9 @@ if prompt := st.chat_input(prompt_placeholder):
                 }
                 
                 # 챗봇 속도에 영향을 주지 않도록 2초만 던지고 빠집니다.
+                # 🚀 [수정] Sub DB를 열고 쓰는 딜레이를 고려해 timeout을 8초로 연장!
                 try:
-                    requests.post(GAS_URL, json=payload, timeout=2)
+                    requests.post(GAS_URL, json=payload, timeout=8)
                 except:
                     pass
                     
