@@ -1,8 +1,9 @@
 import os
 import requests
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, make_response, send_file
 from dotenv import load_dotenv  # 추가
 from pathlib import Path
+from uno_renderer import render_ods_to_pdf #새롭게 PyUNO 통신 모듈
 
 # .env 파일의 내용을 환경 변수로 로드
 load_dotenv()  # 추가
@@ -112,6 +113,35 @@ def kakao_chat():
         # 에러 나면 로그 출력
         print(f"카카오 오류: {e}")
         return jsonify({"version": "2.0", "template": {"outputs": [{"simpleText": {"text": "오류가 발생했습니다."}}]}})
+
+# ==========================================
+# [v3.0 개편] 문서 자동화 렌더링 팩토리 라우터 (PyUNO 데몬 통신)
+# ==========================================
+@app.route('/api/v1/generate/po', methods=['POST'])
+def generate_po():
+    try:
+        data = request.get_json()
+        
+        # 1. 템플릿 경로 지정 (반드시 Native .ods 사용)
+        template_path = os.path.join(BASE_DIR, "assets", "templates", "po_template.ods")
+        
+        # 2. PyUNO 소켓 통신을 통한 데이터 직접 주입 및 PDF 추출
+        # (이 함수 내부에서 텍스트 자동 줄바꿈 등 가독성 로직이 적용됨)
+        pdf_file_path = render_ods_to_pdf(template_path, data)
+        
+        print(f" ✅ [렌더링 팩토리] .ods Native 추출 대성공 -> {pdf_file_path}")
+        
+        return send_file(
+            pdf_file_path, 
+            as_attachment=True, 
+            download_name=os.path.basename(pdf_file_path), 
+            mimetype='application/pdf'
+        )
+        
+    except Exception as e:
+        print(f" ❌ 렌더링 오류 발생: {e}")
+        # 에러 원인을 명확히 파악하기 위해 땜질식 처방 없이 로직 중단 및 로그 반환
+        return jsonify({"status": "error", "message": str(e)}), 500
 
 if __name__ == "__main__":
     app.run(debug=True, host='0.0.0.0', port=int(os.environ.get('PORT', 8080)))
