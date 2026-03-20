@@ -3,15 +3,25 @@ import requests
 import os
 import json
 from dotenv import load_dotenv
-
-# 🚀 [최신 무기] 신형 통합 SDK 사용
 from google import genai
 from google.genai import types
 
 load_dotenv() 
 
-PROJECT_ID = os.getenv("GCP_PROJECT_ID", "makermone-ai-core")
+# =====================================================================
+# 🛡️ [보안 패치] Streamlit Cloud 환경에서 마스터키 복원 로직
+# =====================================================================
+# 금고(Secrets)에 키가 있으면 클라우드 환경, 없으면 내 PC 환경으로 자동 인식
+if "GCP_KEY_JSON" in st.secrets:
+    with open("temp_vertex_key.json", "w") as f:
+        f.write(st.secrets["GCP_KEY_JSON"])
+    os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = "temp_vertex_key.json"
+else:
+    os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = "vertex_key.json"
+
+PROJECT_ID = st.secrets.get("GCP_PROJECT_ID", os.getenv("GCP_PROJECT_ID", "makermone-ai-core"))
 DATASTORE_ID = "maker-knowledge_1773908104525"
+# =====================================================================
 
 st.set_page_config(page_title="메이커몬 AI 포털", page_icon="🤖", layout="wide")
 
@@ -159,7 +169,7 @@ if prompt := st.chat_input(prompt_placeholder):
                 GAS_URL = "https://script.google.com/macros/s/AKfycbx1pr6BRUutkpO72hNNI0gjrkYxlXK88MRFZScp-kWUgqTSYNirRVETSVIE5WvT5P8v/exec"
                 payload = {"action": "log_inquiry", "client_code": client_code, "query": prompt, "answer": answer_text}
                 try:
-                    requests.post(GAS_URL, json=payload, timeout=8)
+                    requests.post(GAS_URL, json=payload, timeout=10)
                 except:
                     pass
             except Exception as e:
