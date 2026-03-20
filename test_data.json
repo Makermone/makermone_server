@@ -1,0 +1,35 @@
+{
+  "doc_no": "MK-PO-20260318-01",
+  "clientCode": "BH03V01",
+  "po_date": "2026-03-18",
+  "vendor_name": "프리시전(가칭)",
+  "vendor_biz_no": "123-45-67890",
+  "vendor_ceo": "김정밀",
+  "vendor_address": "경기도 시흥시 산기대학로 123",
+  "po_title": "북미향 AI Chef Robot 'Grill X' 양산 제작 발주의 건",
+  "po_details": "제품 4종 (총 100SET)",
+  "due_date": "2026-01-16 (순차 납품 요청)",
+  "total_amount": "80,200,000",
+  "manage_no": "BH03V01-V02-PO",
+  "attachment": "4종 제작도면 (Headless 2종 제외)",
+  "payment_condition": "12월 29일 40대 선금 지급, 이후 납품 수량에 따라 지급",
+  "po_items": [
+    {
+      "group_name": "BH03V01\n(Ver.정방향)",
+      "details": [
+        {"name": "TOP Ass'y", "qty": "60 SET", "price": "₩ 51,600,000"},
+        {"name": "MIDDLE Ass'y", "qty": "", "price": ""},
+        {"name": "BOTTOM Ass'y", "qty": "", "price": ""}
+      ]
+    },
+    {
+      "group_name": "BH04V01\n(Ver.대칭)",
+      "details": [
+        {"name": "TOP Ass'y", "qty": "20 SET", "price": "₩ 17,200,000"},
+        {"name": "MIDDLE Ass'y", "qty": "", "price": ""},
+        {"name": "BOTTOM Ass'y", "qty": "", "price": ""}
+      ]
+    }
+  ],
+  "_template_path": "C:\\Users\\keede\\Documents\\Github\\makermone_server\\assets\\templates\\template_po.ods"
+}

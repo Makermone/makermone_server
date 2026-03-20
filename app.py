@@ -1,17 +1,20 @@
 import streamlit as st
 import requests
-import google.generativeai as genai
 import os
 import json
 from dotenv import load_dotenv
 
-# --- 1. 기본 설정 및 보안 ---
+# 🚀 [최신 무기] 신형 통합 SDK 사용
+from google import genai
+from google.genai import types
+
 load_dotenv() 
-GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
+
+PROJECT_ID = os.getenv("GCP_PROJECT_ID", "makermone-ai-core")
+DATASTORE_ID = "maker-knowledge_1773908104525"
 
 st.set_page_config(page_title="메이커몬 AI 포털", page_icon="🤖", layout="wide")
 
-# [위장술] Streamlit 기본 메뉴 숨기기
 hide_st_style = """
             <style>
             #MainMenu {visibility: hidden;}
@@ -21,13 +24,29 @@ hide_st_style = """
             """
 st.markdown(hide_st_style, unsafe_allow_html=True)
 
-if not GOOGLE_API_KEY:
-    st.error("🚨 환경 변수에 GOOGLE_API_KEY가 설정되지 않았습니다.")
-    st.stop()
-
-# URL에서 명찰 가져오기 (없으면 기본값 'GUEST' 부여)
 client_code = st.query_params.get("client_code", "GUEST")
-genai.configure(api_key=GOOGLE_API_KEY)
+
+# =====================================================================
+# 🚀 신형 엔진 및 지식 창고 세팅 (미국 서버로 강제 고정)
+# =====================================================================
+@st.cache_resource
+def get_ai_client():
+    # 1. Gemini 2.0이 존재하는 미국 중부(us-central1)로 연결
+    client = genai.Client(vertexai=True, project=PROJECT_ID, location="us-central1")
+    
+    # 2. 지식 창고(Data Store) 풀 경로 지정
+    datastore_path = f"projects/{PROJECT_ID}/locations/global/collections/default_collection/dataStores/{DATASTORE_ID}"
+    
+    # 3. 검색 도구 장착
+    vertex_tool = types.Tool(
+        retrieval=types.Retrieval(
+            vertex_ai_search=types.VertexAISearch(datastore=datastore_path)
+        )
+    )
+    return client, vertex_tool
+
+client, vertex_tool = get_ai_client()
+MODEL_NAME = "gemini-2.5-flash"
 
 # =====================================================================
 # 🔀 [분기 A] 일반 방문객 (GUEST) 모드
@@ -49,30 +68,19 @@ if client_code == "GUEST":
     system_instruction = """
     당신은 메이커몬(Makermone)의 수석 엔지니어이자 전문 PM입니다.
     관련 자료 전달 및 추가 문의에 대한 사항은 대표 이메일(aimwon01@gmail.com) 또는 홈페이지의 문의하기를 통해 가능하다고 안내하세요.
-    고객의 질문에 대답할 때 다음 원칙을 무조건 지키세요:
-
-    1. [전문성과 PM 역량 어필]: 백과사전처럼 딱딱하게 대답하지 마세요. "메이커몬은 엔지니어링 기반 전주기 PM 서비스로서, 이러한 문제를 사전에 방지하기 위해 3D 설계 검토와 최적의 파트너사 매칭, 꼼꼼한 전수 검사를 진행합니다."라는 뉘앙스를 자연스럽게 풍기세요.
-    2. [단가 철벽 방어]: 구체적인 단가나 가격을 물어보면 절대 숫자를 말하지 말고, "형상, 소재, 수량에 따라 단가가 크게 상이합니다."라고 방어하세요.
-    3. [가독성 극대화]: 긴 문장은 피하고, 3~4문장 단위로 적절히 줄바꿈(\n)을 하세요. 여러 가지 이유나 방법을 설명할 때는 반드시 불릿 포인트(•)를 사용하여 보기 좋게 정리하세요.
-    4. [영업적 클로징]: 답변의 마지막에는 항상 "자세한 견적과 최적의 제조 공정 검토를 원하시면, 도면이나 3D 데이터를 전달해 주세요. 메이커몬 엔지니어가 직접 최적의 솔루션을 제안해 드립니다."와 같은 멘트로 고객의 액션을 유도하세요.
-    5. "고객이 도면 포맷(STL 등)에 대해 물어볼 때, 폴리곤 메시 같은 학술적인 원리를 설명하지 마세요. 'STL은 가공 불가, STEP은 가능'처럼 결론과 대안만 명확하고 단호하게 답변하세요."
-    6. "메이커몬의 견적 및 가공 정책에 대해 답변할 때, '가능할 수도 있습니다', '추가 가공이 필요합니다' 같은 모호한 여지를 주지 마세요. 불가능한 것은 단호하게 불가능하다고 안내하세요."
+    1. [전문성과 PM 역량 어필]: 백과사전처럼 딱딱하게 대답하지 마세요. 
+    2. [단가 철벽 방어]: 구체적인 단가나 가격을 물어보면 절대 숫자를 말하지 말고 방어하세요.
+    3. [가독성 극대화]: 긴 문장은 피하고 불릿 포인트를 사용하세요.
+    4. [영업적 클로징]: 답변의 마지막에는 항상 도면 전달을 유도하는 멘트를 넣으세요.
     """
-    # (이후 model = genai.GenerativeModel('gemini-2.0-flash', system_instruction=system_instruction) 형태로 적용)
-    
-    # 일반 응대는 자연스럽고 친절해야 하므로 창의성(Temperature)을 0.7로 설정
-    model = genai.GenerativeModel(
-        model_name="gemini-2.0-flash",
-        system_instruction=system_instruction,
-        generation_config=genai.GenerationConfig(temperature=0.7) 
-    )
+    temperature_setting = 0.7
 
 # =====================================================================
 # 🔀 [분기 B] 기존 프로젝트 고객 (PM) 모드
 # =====================================================================
 else:
     def get_pm_data(code):
-        GAS_URL = "https://script.google.com/macros/s/AKfycbz4JTfSxbdKMILhG2X9GepP1ZiNjFu7cYTUsqIALZmtL0k3FudVkzNdwK40n7FhZavM/exec"
+        GAS_URL = "https://script.google.com/macros/s/AKfycbx1pr6BRUutkpO72hNNI0gjrkYxlXK88MRFZScp-kWUgqTSYNirRVETSVIE5WvT5P8v/exec"
         headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/120.0.0.0"}
         response = requests.get(f"{GAS_URL}?action=get_pm_data&client_code={code}", headers=headers, allow_redirects=True)
         if response.status_code == 200:
@@ -91,83 +99,68 @@ else:
         st.markdown("---")
         st.info(f"**진행 고객사:** [{client_code}]")
         st.success("**담당 PM:** 메이커몬 AI 전담 PM")
-        st.markdown("### 📌 시스템 기능")
-        st.markdown("- 실시간 일정 트래킹\n- 최신 리포트 요약\n- 부품/도면 원장 검색")
         st.markdown("---")
         show_raw_data = st.toggle("현재 수신된 DB 원장 보기")
         if show_raw_data:
             st.json(pm_data)
 
     st.title("🤖 메이커몬 전담 PM AI")
-    st.markdown("고객님, 환영합니다. 프로젝트 진행 상황, 일정, 도면에 대해 무엇이든 말씀해 주세요.")
     st.markdown("---")
 
     system_instruction = f"""
     당신은 팹리스 제조 플랫폼 '메이커몬'의 무결점 전담 AI PM입니다.
-    현재 고객사 코드는 [{client_code}] 입니다.
-    [절대 원칙] 반드시 아래 제공된 JSON 데이터를 배열 1번부터 끝까지 꼼꼼히 스캔하여 팩트 기반으로 답변하세요.
-    
-    [🚨 링크 제공 절대 규칙 - 메이커몬 헌법 5조]
-    고객이 파일, 도면, 리포트, 스케줄 관련 자료를 요청하거나 원장 데이터에 'drive_link', 'file_link' 등의 URL이 존재할 경우, 절대 "보안상의 이유로 제공할 수 없다"고 거절해서는 안 됩니다.
-    반드시 마크다운 하이퍼링크 형식인 [자료명](URL) 포맷으로 링크를 직접 클릭할 수 있게 제공하세요. (예: [JD01V01 투바투 별 굿즈 리포트](https://drive.google.com/...)) 
-    절대 백틱(`) 기호로 링크나 파일명을 감싸지 마세요.
+    [절대 원칙] 제공된 JSON 데이터를 팩트 기반으로 답변하세요.
+    [🚨 링크 제공 절대 규칙] 절대 백틱(`) 기호를 쓰지 말고 [자료명](URL) 형식을 사용하세요.
     
     [프로젝트 원장 데이터]
     {json.dumps(pm_data, ensure_ascii=False, indent=2)}
     """
-    
-    # PM은 사실만 말해야 하므로 창의성(Temperature)을 0.1로 억제
-    model = genai.GenerativeModel(
-        model_name="gemini-2.0-flash",
-        system_instruction=system_instruction,
-        generation_config=genai.GenerationConfig(temperature=0.1) 
-    )
+    temperature_setting = 0.1
 
 # --- 공통 챗봇 화면 렌더링 ---
-if "chat_session" not in st.session_state:
-    st.session_state.chat_session = model.start_chat(history=[])
+if "messages" not in st.session_state:
+    st.session_state.messages = []
 
-for message in st.session_state.chat_session.history:
-    role = "user" if message.role == "user" else "assistant"
-    with st.chat_message(role):
-        st.markdown(message.parts[0].text)
+for msg in st.session_state.messages:
+    with st.chat_message(msg["role"]):
+        st.markdown(msg["content"])
 
-# 모드에 따라 입력창 문구 변경
-prompt_placeholder = "메이커몬에 대해 궁금한 점을 입력하세요..." if client_code == "GUEST" else "메이커몬 PM에게 질문을 입력하세요... (예: 목업 진행상황 알려줘)"
-
-# (app.py 맨 아래 부분 수정)
+prompt_placeholder = "메이커몬에 대해 궁금한 점을 입력하세요..." if client_code == "GUEST" else "메이커몬 PM에게 질문을 입력하세요..."
 
 if prompt := st.chat_input(prompt_placeholder):
-    # 1. 고객 질문 화면에 출력
+    st.session_state.messages.append({"role": "user", "content": prompt})
     with st.chat_message("user"):
         st.markdown(prompt)
         
-    # 2. AI 대답 생성 및 출력
+    history_contents = [
+        types.Content(role="user" if m["role"] == "user" else "model", parts=[types.Part.from_text(text=m["content"])])
+        for m in st.session_state.messages
+    ]
+
     with st.chat_message("assistant"):
-        spinner_msg = "메이커몬 AI가 답변을 작성 중입니다..." if client_code == "GUEST" else "PM이 원장 데이터를 꼼꼼히 스캔 중입니다..."
+        spinner_msg = "분석 중입니다..."
         with st.spinner(spinner_msg):
             try:
-                # 챗봇이 생각하고 대답을 뱉어냅니다.
-                response = st.session_state.chat_session.send_message(prompt)
+                # 🚀 신형 엔진 호출
+                response = client.models.generate_content(
+                    model=MODEL_NAME,
+                    contents=history_contents,
+                    config=types.GenerateContentConfig(
+                        tools=[vertex_tool],
+                        system_instruction=system_instruction,
+                        temperature=temperature_setting
+                    )
+                )
                 answer_text = response.text
                 st.markdown(answer_text)
+                st.session_state.messages.append({"role": "assistant", "content": answer_text})
                 
-                # 💡 [도청기 장착] 질문과 '대답'을 묶어서 구글 시트로 조용히 쏩니다!
-                # 캡처본에 있던 대표님의 배포 URL을 그대로 적용했습니다.
-                GAS_URL = "https://script.google.com/macros/s/AKfycbz4JTfSxbdKMILhG2X9GepP1ZiNjFu7cYTUsqIALZmtL0k3FudVkzNdwK40n7FhZavM/exec"
-                payload = {
-                    "action": "log_inquiry",
-                    "client_code": client_code,
-                    "query": prompt,
-                    "answer": answer_text # AI가 방금 한 대답(text)을 통째로 추가!
-                }
-                
-                # 챗봇 속도에 영향을 주지 않도록 2초만 던지고 빠집니다.
-                # 🚀 [수정] Sub DB를 열고 쓰는 딜레이를 고려해 timeout을 8초로 연장!
+                # 로그 전송 로직
+                GAS_URL = "https://script.google.com/macros/s/AKfycbx1pr6BRUutkpO72hNNI0gjrkYxlXK88MRFZScp-kWUgqTSYNirRVETSVIE5WvT5P8v/exec"
+                payload = {"action": "log_inquiry", "client_code": client_code, "query": prompt, "answer": answer_text}
                 try:
                     requests.post(GAS_URL, json=payload, timeout=8)
                 except:
                     pass
-                    
             except Exception as e:
                 st.error(f"AI 응답 에러: {e}")

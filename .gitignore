@@ -5,3 +5,7 @@ venv/
 .venv/
 env/
 .env
+vertex_key.json
+venv/
+__pycache__/
+*.pyc
