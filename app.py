@@ -175,6 +175,12 @@ if prompt := st.chat_input(prompt_placeholder):
                 st.markdown(answer_text)
                 st.session_state.messages.append({"role": "assistant", "content": answer_text})
                 
+                # 1. DB 기록용 고객 명찰 가공 (JD01V01 -> JD고객)
+                if client_code == "GUEST":
+                    log_client_name = "NEW_CLIENT (GUEST)"
+                else:
+                    log_client_name = f"{client_code[:2]}고객"  # 앞 2글자(JD, BH 등) 추출 후 '고객' 붙임
+                
                 # 로그 전송 로직
                 GAS_URL = "https://script.google.com/macros/s/AKfycbx1pr6BRUutkpO72hNNI0gjrkYxlXK88MRFZScp-kWUgqTSYNirRVETSVIE5WvT5P8v/exec"
                 payload = {"client_code": client_code, "query": prompt, "answer": answer_text}
