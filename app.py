@@ -183,7 +183,7 @@ if prompt := st.chat_input(prompt_placeholder):
                 
                 # 로그 전송 로직
                 GAS_URL = "https://script.google.com/macros/s/AKfycbx1pr6BRUutkpO72hNNI0gjrkYxlXK88MRFZScp-kWUgqTSYNirRVETSVIE5WvT5P8v/exec"
-                payload = {"client_code": client_code, "query": prompt, "answer": answer_text}
+                payload = {"action": "log_inquiry", "client_code": client_code, "query": prompt, "answer": answer_text}
                 try:
                     requests.post(GAS_URL, json=payload, timeout=10)
                 except:
