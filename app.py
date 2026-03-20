@@ -9,13 +9,23 @@ from google.genai import types
 load_dotenv() 
 
 # =====================================================================
-# 🛡️ [보안 패치] Streamlit Cloud 환경에서 마스터키 복원 로직
+# 🛡️ [보안 패치 v2] Streamlit Cloud 마스터키 자동 복원 및 예외 처리
 # =====================================================================
-# 금고(Secrets)에 키가 있으면 클라우드 환경, 없으면 내 PC 환경으로 자동 인식
+TEMP_KEY_PATH = os.path.abspath("temp_vertex_key.json")
+
+# 1. TOML 형식(GCP_KEY_JSON = ''')으로 정확히 입력된 경우
 if "GCP_KEY_JSON" in st.secrets:
-    with open("temp_vertex_key.json", "w") as f:
+    with open(TEMP_KEY_PATH, "w", encoding="utf-8") as f:
         f.write(st.secrets["GCP_KEY_JSON"])
-    os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = "temp_vertex_key.json"
+    os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = TEMP_KEY_PATH
+
+# 2. 대표님이 실수로 JSON 내용만 통째로 붙여넣은 경우 (자동 보정)
+elif "type" in st.secrets and st.secrets["type"] == "service_account":
+    with open(TEMP_KEY_PATH, "w", encoding="utf-8") as f:
+        json.dump(dict(st.secrets), f)
+    os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = TEMP_KEY_PATH
+
+# 3. 클라우드가 아닌 내 PC(로컬) 환경인 경우
 else:
     os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = "vertex_key.json"
 
