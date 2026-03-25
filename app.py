@@ -125,6 +125,8 @@ else:
             st.json(pm_data)
 
     st.title("🤖 메이커몬 전담 PM AI")
+    st.markdown("안녕하세요!")
+    st.markdown("고객님의 프로젝트와 관련된 모든 사항을 전담 PM이 친절하게 알려드립니다.")
     st.markdown("---")
 
     system_instruction = f"""
