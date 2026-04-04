@@ -1,8 +1,29 @@
 import os
 import sys
 import json
+import smtplib
+from datetime import datetime  # [신규 추가] 시간 기록을 위한 시계 부품 장착!
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
+from email.mime.application import MIMEApplication
 from flask import Flask, request, send_file, jsonify
-from datetime import datetime
+
+# ==========================================
+# [신규 조치] dotenv 라이브러리 없이 순수 파이썬으로 .env 안전 로드
+# ==========================================
+def load_env_natively():
+    env_path = os.path.join(os.getcwd(), '.env')
+    if os.path.exists(env_path):
+        with open(env_path, 'r', encoding='utf-8') as f:
+            for line in f:
+                line = line.strip()
+                # 주석(#) 무시 및 = 기호가 있는 줄만 파싱
+                if line and not line.startswith('#') and '=' in line:
+                    key, val = line.split('=', 1)
+                    os.environ[key.strip()] = val.strip()
+
+# 환경 변수 강제 로드 실행
+load_env_natively()
 
 # ==========================================
 # [핵심 1] 윈도우 환경 LibreOffice DLL 및 PyUNO 경로 강제 주입
@@ -276,8 +297,11 @@ def generate_po():
         print(f"❌ 시스템 통신 에러: {str(e)}")
         return jsonify({"error": str(e)}), 500
 
-# 대기열 저장을 위한 JSON 파일 경로 (서버 구동 폴더 기준)
+# ==========================================
+# [데이터 파일 관리 모듈] 큐(Queue) 파일 로드 및 저장
+# ==========================================
 QUEUE_FILE = os.path.join(os.getcwd(), "po_queue.json")
+PRICE_QUEUE_FILE = os.path.join(os.getcwd(), "price_queue.json") # [Phase 2 신규] 원가 관제 큐
 
 def load_queue():
     if os.path.exists(QUEUE_FILE):
@@ -289,8 +313,18 @@ def save_queue(data):
     with open(QUEUE_FILE, 'w', encoding='utf-8') as f:
         json.dump(data, f, ensure_ascii=False, indent=4)
 
+def load_price_queue():
+    if os.path.exists(PRICE_QUEUE_FILE):
+        with open(PRICE_QUEUE_FILE, 'r', encoding='utf-8') as f:
+            return json.load(f)
+    return []
+
+def save_price_queue(data):
+    with open(PRICE_QUEUE_FILE, 'w', encoding='utf-8') as f:
+        json.dump(data, f, ensure_ascii=False, indent=4)
+
 # ==========================================
-# [신규] HITL 승인 대기열 적재 엔드포인트
+# [기존 API] HITL 승인 대기열 적재 엔드포인트
 # ==========================================
 @app.route('/api/v1/queue/po', methods=['POST'])
 def add_to_queue():
@@ -307,6 +341,7 @@ def add_to_queue():
             "doc_no": data.get("doc_no", ""),
             "manage_no": data.get("manage_no", ""), # 식별코드 (예: BH03V01)
             "vendor_name": data.get("vendor_name", ""),
+            "vendor_email": data.get("vendor_email", ""),
             "total_amount": data.get("total_amount", ""),
             "pdf_url": data.get("pdf_url", ""), # 구글 드라이브 다운로드 링크
             "status": "대기중",
@@ -323,6 +358,108 @@ def add_to_queue():
         print(f"❌ 대기열 적재 에러: {str(e)}")
         return jsonify({"error": str(e)}), 500
 
+# ==========================================
+# [Phase 2 신규 API] AutoDoc.gs 자재 전개 (BOM) 대기열 수신
+# ==========================================
+@app.route('/api/v1/queue/bom', methods=['POST'])
+def receive_bom():
+    """AutoDoc.gs로부터 2-Track 자재 전개 데이터를 수신 (po_queue.json 에 통합)"""
+    try:
+        payload = request.json
+        if not payload:
+            return jsonify({"status": "error", "message": "No Payload"}), 400
+        
+        queue_list = load_queue()
+        payload['received_at'] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        queue_list.append(payload) 
+        
+        save_queue(queue_list)
+        print("📥 [BOM 대기열 적재 완료] 새로운 자재 전개 데이터가 수신되었습니다.")
+        return jsonify({"status": "success", "message": "BOM queued for rendering"}), 200
+        
+    except Exception as e:
+        print(f"❌ BOM 대기열 적재 에러: {str(e)}")
+        return jsonify({"error": str(e)}), 500
+
+# ==========================================
+# [Phase 2 신규 API] 원가 변동 내역 (Price_Log) 수신
+# ==========================================
+@app.route('/api/v1/queue/price', methods=['POST'])
+def receive_price_log():
+    """AutoDoc.gs로부터 원가 변동 대기 데이터를 수신 (price_queue.json 에 별도 적재)"""
+    try:
+        payload = request.json
+        if not payload:
+            return jsonify({"status": "error", "message": "No Payload"}), 400
+        
+        queue_list = load_price_queue()
+        payload['received_at'] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        queue_list.append(payload)
+        
+        save_price_queue(queue_list)
+        print("📥 [원가 관제 적재 완료] 새로운 단가 변동 이슈가 감지되었습니다.")
+        return jsonify({"status": "success", "message": "Price log queued for HITL approval"}), 200
+        
+    except Exception as e:
+        print(f"❌ 원가 대기열 적재 에러: {str(e)}")
+        return jsonify({"error": str(e)}), 500
+    
+# ==========================================
+# [Phase 1-3 신규] HITL 승인 완료 시 자동 메일 발송 (Deploy)
+# ==========================================
+@app.route('/api/v1/deploy/po', methods=['POST'])
+def deploy_po_email():
+    try:
+        data = request.json
+        doc_no = data.get("doc_no")
+        vendor_email = data.get("vendor_email")
+        vendor_name = data.get("vendor_name")
+
+        if not vendor_email:
+            return jsonify({"error": "협력사 이메일 정보가 누락되었습니다."}), 400
+
+        # temp_outputs 폴더에서 미리 구워둔 PDF 찾기
+        pdf_path = os.path.join(os.getcwd(), "temp_outputs", f"{doc_no}.pdf")
+        if not os.path.exists(pdf_path):
+            return jsonify({"error": "발송할 PDF 문서를 찾을 수 없습니다."}), 404
+
+        smtp_user = os.getenv("SMTP_USER")
+        smtp_pass = os.getenv("SMTP_PASSWORD")
+
+        if not smtp_user or not smtp_pass:
+            return jsonify({"error": ".env 파일에 메일 발송 계정 정보가 없습니다."}), 500
+
+        # 1. 메일 양식(MIME) 조립
+        msg = MIMEMultipart()
+        msg['From'] = smtp_user
+        msg['To'] = vendor_email
+        msg['Subject'] = f"[메이커몬] {vendor_name} 귀하께 발주서를 전송합니다. ({doc_no})"
+
+        body = f"안녕하세요 {vendor_name} 담당자님,\n\n메이커몬에서 양산 제작 발주서를 송부드립니다.\n첨부된 PDF 파일을 확인하시고, 이상이 없을 시 진행 부탁드립니다.\n\n감사합니다.\n- 메이커몬 드림"
+        msg.attach(MIMEText(body, 'plain'))
+
+        # 2. PDF 파일 첨부
+        with open(pdf_path, 'rb') as f:
+            attach = MIMEApplication(f.read(), _subtype="pdf")
+            attach.add_header('Content-Disposition', 'attachment', filename=f"{doc_no}_발주서.pdf")
+            msg.attach(attach)
+
+        # 3. SMTP 서버 통신 및 발송 (보안 포트 587)
+        server = smtplib.SMTP('smtp.gmail.com', 587)
+        server.starttls()
+        server.login(smtp_user, smtp_pass)
+        server.send_message(msg)
+        server.quit()
+
+        print(f"📧 [메일 발송 완료] {vendor_name} ({vendor_email})")
+        return jsonify({"message": "메일 발송 성공"}), 200
+
+    except Exception as e:
+        print(f"❌ 메일 발송 에러: {str(e)}")
+        return jsonify({"error": f"SMTP 발송 실패: {str(e)}"}), 500
+    
+# ==========================================
+# 4. 서버 가동 스위치 (이 코드가 무조건 파일의 가장 마지막에 있어야 합니다!)
+# ==========================================
 if __name__ == '__main__':
-    print("🏭 [메이커몬 손발] 단일 렌더링 팩토리 서버 가동 (Port 5000)")
     app.run(host='0.0.0.0', port=5000)
