@@ -1,0 +1,652 @@
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css">
+<script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"> <!-- 모바일 화면에 맞춰 줄임 -->
+
+<style>
+    /* ==========================================================================
+       [공통 CSS] 메이커몬 App-UI (챗봇 생존을 위한 스코프 격리)
+       ========================================================================== */
+    :root { --mm-blue: #1a73e8; --mm-orange: #ffa100; --mm-green: #0f9d58; --mm-red: #ea4335; --mm-gray: #5f6368; --bg-gray: #f8f9fa; --border: #eaebed; }
+    
+    html, body, #doz_body, #visual, #main, .section_wrap, .doz_sys { box-shadow: none !important; background-image: none !important; background-color: var(--bg-gray) !important; margin: 0 !important; padding: 0 !important; }
+    
+    #mmAuthWall *, .mm-app-header *, .v02-container *, .top-toast-notifier *, .mm-micro-footer * { -webkit-tap-highlight-color: transparent; outline: none; box-sizing: border-box !important; font-family: 'Pretendard', sans-serif !important; }
+
+    /* 🔐 Auth Wall */
+    #mmAuthWall { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: #fff; z-index: 2147483647; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+    .auth-box { text-align: center; max-width: 320px; width: 100%; padding: 0 20px; }
+    .auth-logo { height: 40px; margin-bottom: 30px; }
+    .auth-title { font-size: 20px; font-weight: 800; color: #111; margin-bottom: 8px; }
+    .auth-desc { font-size: 13px; color: #666; margin-bottom: 24px; line-height: 1.5; }
+    .auth-input { width: 100%; padding: 14px; border: 1px solid #ccc; border-radius: 8px; font-size: 16px; font-weight: 700; text-align: center; margin-bottom: 12px; letter-spacing: 2px; }
+    .auth-input:focus { border-color: var(--mm-blue); }
+    .auth-btn { width: 100%; background: #111; color: #fff; padding: 14px; border: none; border-radius: 8px; font-size: 15px; font-weight: 800; cursor: pointer; transition: 0.2s; }
+    .auth-btn:hover { background: var(--mm-blue); }
+    .maker-app-locked { display: none !important; }
+
+    /* 🔔 Toast & App-Bar */
+    .top-toast-notifier { position: fixed; top: -150px; left: 50%; transform: translateX(-50%); background: rgba(32, 33, 36, 0.98); backdrop-filter: blur(10px); color: #ffffff; padding: 14px 28px; border-radius: 30px; font-size: 14px; font-weight: 700; box-shadow: 0 10px 30px rgba(0,0,0,0.25); transition: top 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275), opacity 0.4s ease; z-index: 2147483647; display: flex; align-items: center; gap: 10px; white-space: nowrap; border: 1px solid rgba(255,255,255,0.1); opacity: 0; visibility: hidden; }
+    .top-toast-notifier.show { top: 80px; opacity: 1; visibility: visible; }
+    
+    .mm-app-header { position: fixed; top: 0; left: 0; right: 0; /* width: 100% 대신 left/right 0으로 스크롤바 간섭 원천 차단 */ height: 64px; background: #fff; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; padding: 0 24px; box-sizing: border-box !important; /* 박스 사이즈 강제 고정 */z-index: 2147483646 !important; transform: translateZ(0); box-shadow: 0 2px 10px rgba(0,0,0,0.02) !important; }
+    .mm-logo img { height: 26px !important; width: auto; object-fit: contain; cursor: pointer; } 
+    .mm-security-badge { display: flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 700; color: #111; background: #f1f3f4; padding: 6px 12px; border-radius: 20px; white-space: nowrap; }
+    .pulse-dot { width: 8px; height: 8px; background: #00e676; border-radius: 50%; animation: pulse 1.5s infinite; }
+    @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(0, 230, 118, 0.4); } 70% { box-shadow: 0 0 0 6px rgba(0, 230, 118, 0); } 100% { box-shadow: 0 0 0 0 rgba(0, 230, 118, 0); } }
+
+    /* 💀 Skeleton & Footer */
+    .skeleton { background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%); background-size: 200% 100%; animation: shimmer 1.5s infinite; border-radius: 8px; color: transparent !important; border: none !important; box-shadow: none !important; user-select: none; pointer-events: none; }
+    .skeleton * { visibility: hidden; }
+    @keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+
+    .mm-micro-footer { position: relative; z-index: 10; width: 100%; text-align: center; padding: 40px 20px 40px 20px; font-size: 12px; color: #666; line-height: 1.6; border-top: 1px solid var(--border); background: var(--bg-gray); word-break: keep-all; }
+    .mm-micro-footer span { display: inline-block; font-weight: 500; }
+    .footer-div { margin: 0 8px; color: #ccc; }
+    .footer-copy { margin-top: 16px !important; color: #888; font-size: 11px; }
+
+    /* ==========================================================================
+       [V02 전용 CSS] 수직 콕핏 아키텍처
+       ========================================================================== */
+    .v02-container { padding-top: 94px !important; padding-bottom: 100px !important; padding-left: 15px !important; padding-right: 15px !important; max-width: 1200px; margin: 0 auto; display: flex; gap: 24px; color: #222; min-height: 100vh; letter-spacing: -0.02em; overflow-x: hidden; }
+    .v02-lnb { width: 260px; flex-shrink: 0; display: flex; flex-direction: column; gap: 10px; }
+    
+    .nav-hub { display: flex; background: #f1f3f4; border-radius: 12px; padding: 6px; margin-bottom: 20px; gap: 4px; }
+    .nav-btn { flex: 1; padding: 10px 0; text-align: center; border-radius: 8px; font-size: 12px; font-weight: 800; color: #666; cursor: pointer; border: none; background: transparent; transition: 0.2s; white-space: nowrap; }
+    .nav-btn.active { background: #fff; color: var(--mm-green); box-shadow: 0 2px 6px rgba(0,0,0,0.05); border: 1px solid var(--mm-green); }
+    .nav-btn:hover:not(.active) { background: #e8eaed; color: #111; }
+
+    .lnb-title { font-size: 13px; font-weight: 800; color: #888; padding: 0 5px 5px 5px; border-bottom: 1px solid var(--border); }
+    .lnb-card { background: #fff; border: 1px solid var(--border); border-radius: 12px; padding: 16px; cursor: pointer; transition: all 0.2s; text-align: left; }
+    .lnb-card.active { border-color: var(--mm-green); border-width: 2px; background: #e6f4ea; }
+    .lnb-code { font-size: 16px; font-weight: 800; display: block; margin-bottom: 6px; }
+    .lnb-status { font-size: 11px; font-weight: 700; padding: 4px 8px; border-radius: 6px; display: inline-block; background: #fff; color: #137333; border: 1px solid #137333; }
+
+    .v02-main { flex-grow: 1; display: flex; flex-direction: column; gap: 24px; min-width: 0; width: 100%; }
+    .section-title { font-size: 18px !important; font-weight: 800 !important; margin: 0 0 16px 0 !important; color: #111 !important; display: flex; align-items: center; gap: 8px; letter-spacing: -0.5px; flex-wrap: wrap; }
+    .white-box { background: #fff; border: 1px solid var(--border); border-radius: 16px; padding: 24px; box-shadow: 0 4px 15px rgba(0,0,0,0.02); overflow: hidden; width: 100%; }
+    .current-model-badge { font-size: 12px; font-weight: 800; background: #e6f4ea; color: #137333; padding: 4px 10px; border-radius: 6px; border: 1px solid #ceead6; display: inline-block; margin-left: auto; }
+
+    /* 1. Hero 관제 패널 */
+    .hero-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; width: 100%; }
+    .yield-number { margin-bottom: 12px; }
+    .yield-number h2 { margin: 0 0 4px 0 !important; font-size: 46px !important; font-weight: 900 !important; color: var(--mm-blue); letter-spacing: -1px; }
+    .yield-number p { margin: 0; font-size: 14px; color: #666; font-weight: 600; }
+    .yield-bar-bg { height: 12px; background: #f1f3f4; border-radius: 6px; overflow: hidden; width: 100%; margin-bottom: 16px; }
+    .yield-bar-fill { height: 100%; background: linear-gradient(90deg, #1a73e8, #00e676); width: 0%; transition: width 1.5s ease-in-out; }
+    .stock-accordion-btn { width: 100%; background: #f8f9fa; border: 1px solid var(--border); padding: 14px; border-radius: 12px; font-size: 13px; font-weight: 800; color: #555; cursor: pointer; display: flex; justify-content: space-between; align-items: center; transition: background 0.2s; }
+    .stock-accordion-btn:hover { background: #e8f0fe; color: var(--mm-blue); border-color: var(--mm-blue); }
+    .stock-list-wrap { display: none; padding-top: 12px; flex-direction: column; gap: 8px; animation: fadeIn 0.3s ease; }
+    .stock-list-wrap.open { display: flex; }
+    .stock-item { display: flex; justify-content: space-between; align-items: center; padding: 12px 16px; background: #fff; border: 1px solid var(--border); border-radius: 8px; font-size: 13px; font-weight: 700; color: #333; }
+    .stock-alert { background: #fce8e6; color: #c5221f; padding: 3px 8px; border-radius: 4px; font-size: 11px; margin-left: 8px; }
+
+    /* 2. 재무 보드 및 Live BEP 차트 */
+    .finance-summary { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 20px; }
+    .fs-card { background: #f8f9fa; padding: 16px; border-radius: 12px; text-align: center; border: 1px solid var(--border); }
+    .fs-title { font-size: 12px; color: #666; font-weight: 700; margin-bottom: 6px; }
+    .fs-val { font-size: clamp(14px, 4.5vw, 20px); font-weight: 900; color: #111; letter-spacing: -1px; white-space: nowrap; }
+
+    .price-simulator-compact { background: #fff; border-radius: 12px; padding: 16px; border: 1px solid var(--mm-blue); margin-bottom: 20px; box-shadow: 0 4px 15px rgba(26,115,232,0.1); }
+    .ps-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+    .ps-title { font-size: 13px; font-weight: 800; color: #111; }
+    .price-input-wrap { display: flex; gap: 8px; margin-bottom: 12px; }
+    .price-input { flex-grow: 1; padding: 10px 14px; border: 1px solid #ccc; border-radius: 8px; font-size: 16px; font-weight: 800; color: #111; background: #fff; width: 100%; text-align: right; }
+    .price-input:focus { border-color: var(--mm-blue); }
+    .btn-save-price { background: #111; color: #fff; border: none; padding: 0 16px; border-radius: 8px; font-weight: 800; cursor: pointer; font-size: 13px; white-space: nowrap; transition: 0.2s; }
+    .btn-save-price:hover { background: var(--mm-orange); color: #111; }
+    .margin-result { display: flex; justify-content: space-between; align-items: center; border-top: 1px dashed #ccc; padding-top: 12px; }
+    .margin-label { font-size: 12px; color: #666; font-weight: 600; }
+    .margin-val { font-size: 16px; font-weight: 900; color: var(--mm-gray); transition: color 0.3s; }
+    .margin-val.positive { color: var(--mm-green); }
+    .margin-val.negative { color: var(--mm-red); }
+
+    .bep-canvas-box { position: relative; width: 100%; height: 280px; border-radius: 12px; background: #fff; border: 1px solid var(--border); overflow: hidden; }
+    #v02ApexChart { width: 100%; height: 100%; transition: filter 0.4s ease; }
+    .chart-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255, 255, 255, 0.4); display: none; flex-direction: column; align-items: center; justify-content: center; z-index: 10; }
+    .overlay-text-box { background: rgba(15, 23, 42, 0.95); padding: 16px 20px; border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.1); text-align: center; }
+
+    /* 파츠마스터 TOP 3 */
+    .top-bom-list { display: flex; flex-direction: column; gap: 10px; margin-top: 20px; border-top: 1px dashed var(--border); padding-top: 20px; }
+    .tb-title { font-size: 14px; font-weight: 800; color: #111; margin-bottom: 6px; }
+    .tb-item { display: flex; align-items: center; padding: 12px; border: 1px solid var(--border); border-radius: 8px; background: #fff; }
+    .tb-rank { font-size: 14px; font-weight: 900; color: var(--mm-orange); width: 30px; text-align: center; }
+    .tb-info { flex-grow: 1; padding-left: 10px; }
+    .tb-name { font-size: 13px; font-weight: 800; color: #222; display: block; margin-bottom: 2px; }
+    .tb-desc { font-size: 11px; color: #888; font-weight: 500; }
+    .tb-cost { font-size: 14px; font-weight: 800; color: #111; text-align: right; }
+    .tb-ratio { font-size: 12px; font-weight: 700; color: var(--mm-blue); display: block; text-align: right; margin-top: 2px; }
+    .btn-download { width: 100%; background: #111; color: #fff; border: none; padding: 16px; border-radius: 12px; font-size: 14px; font-weight: 800; cursor: pointer; display: flex; justify-content: center; align-items: center; gap: 8px; transition: 0.2s; margin-top: 16px; }
+    .btn-download:hover { background: var(--mm-blue); }
+
+    /* 3. 원가 혁신 타임라인 */
+    .timeline-list { position: relative; padding-left: 20px; margin-top: 10px; }
+    .timeline-item { position: relative; padding-left: 20px; padding-bottom: 35px; border-left: 2px solid #e8f0fe; }
+    .timeline-item:last-child { border-left-color: transparent; }
+    .timeline-item::before { content: ''; position: absolute; left: -7px; top: 0; width: 12px; height: 12px; background: #fff; border: 3px solid var(--mm-blue); border-radius: 50%; }
+    .ti-date { font-size: 12px; font-weight: 800; color: #888; margin-bottom: 6px; display: block; }
+    .ti-body { font-size: 14px; font-weight: 700; line-height: 1.5; color: #222; background: #f8f9fa; padding: 12px 16px; border-radius: 12px; border: 1px solid var(--border); }
+    .ti-tag { font-size: 11px; font-weight: 800; padding: 3px 6px; border-radius: 4px; display: inline-block; margin-bottom: 8px; }
+    .tag-price { background: #e8f0fe; color: var(--mm-blue); }
+    .tag-tool { background: #fff4e5; color: var(--mm-orange); }
+    .tag-stock { background: #fce8e6; color: var(--mm-red); }
+
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(-5px); } to { opacity: 1; transform: translateY(0); } }
+
+    /* 📱 모바일 반응형 */
+    @media (max-width: 768px) {
+        .mm-app-header { height: 56px; padding: 0 16px; }
+        .v02-container { padding-top: 86px !important; flex-direction: column; padding-left: 15px !important; padding-right: 15px !important; width: 100%; }
+        .mm-security-badge { font-size: 11px; padding: 4px 8px; }
+        .top-toast-notifier.show { top: 70px; }
+        .top-toast-notifier { width: 85%; padding: 12px 20px; font-size: 13px; justify-content: center; }
+        .mm-micro-footer { padding: 30px 15px 40px 15px; font-size: 12px; }
+        .mm-micro-footer > div { margin-top: 0 !important; }
+        .mm-micro-footer span { display: block; margin-bottom: 6px; line-height: 1.4; color: #555; }
+        .footer-copy span { color: #888; margin-top: 12px; font-size: 11px; }
+        .footer-div { display: none !important; }
+
+        .v02-lnb { width: 100%; flex-direction: column; }
+        .nav-hub { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+        .project-scroll-wrap { display: flex; overflow-x: auto; padding-bottom: 10px; border-bottom: 1px solid var(--border); gap: 8px; -webkit-overflow-scrolling: touch; }
+        .project-scroll-wrap::-webkit-scrollbar { display: none; }
+        .lnb-title { display: none; }
+        .lnb-card { padding: 10px 16px; border-radius: 30px; display: flex; align-items: center; gap: 8px; flex-direction: row; white-space: nowrap; flex-shrink: 0; }
+        #skeletonLnb .lnb-card.skeleton { min-width: 120px; height: 40px !important; }
+        .white-box { padding: 24px 15px; border-radius: 12px; width: 100%; border-left: none; border-right: none; margin: 0 -15px; width: calc(100% + 30px); }
+        .section-title { font-size: 16px !important; } 
+        .current-model-badge { display: block; margin-left: 0; margin-top: 6px; align-self: flex-start; }
+        .hero-grid { grid-template-columns: 1fr; gap: 20px; width: 100%; }
+        .fs-card { padding: 12px 10px; }
+        .finance-summary { gap: 10px; }
+    }
+</style>
+
+<div id="mmAuthWall">
+    <div class="auth-box">
+        <img src="https://drive.google.com/thumbnail?id=1uOrzmd-dT18EOQFs8WyR5gSs7Jis-iWR&sz=w800" class="auth-logo" alt="MakerMon">
+        <div class="auth-title">Secured Access</div>
+        <div class="auth-desc">고객사 전용 관제 센터입니다.<br>부여받은 보안 코드를 입력해 주세요.</div>
+        <input type="password" id="mmAuthInput" class="auth-input" placeholder="••••" onkeypress="if(event.keyCode==13) checkAuth()">
+        <button class="auth-btn" onclick="checkAuth()">접속하기</button>
+    </div>
+</div>
+
+<div id="topToast" class="top-toast-notifier maker-app-locked">
+    <span>🔔</span> <span id="toastMsg">데이터가 갱신되었습니다.</span>
+</div>
+
+<header class="mm-app-header maker-app-locked">
+    <div class="mm-logo" onclick="routeTo('BH')">
+        <img src="https://drive.google.com/thumbnail?id=1uOrzmd-dT18EOQFs8WyR5gSs7Jis-iWR&sz=w800" alt="MakerMone Logo">
+    </div>
+    <div class="mm-security-badge">
+        <div class="pulse-dot"></div>
+        <span>양산 관제 센터</span>
+    </div>
+</header>
+
+<div class="v02-container maker-app-locked">
+    <aside class="v02-lnb" id="skeletonLnb">
+        <div class="nav-hub"><div class="skeleton" style="height:35px; width:100%;"></div></div>
+        <div class="skeleton" style="height: 50px; border-radius: 12px; margin-bottom:8px;"></div>
+        <div class="skeleton" style="height: 50px; border-radius: 12px;"></div>
+    </aside>
+
+    <main class="v02-main" id="skeletonMain">
+        <div class="white-box">
+            <div class="skeleton" style="width: 150px; height: 24px; margin-bottom: 20px;"></div>
+            <div class="skeleton" style="width: 100%; height: 140px; border-radius: 12px; margin-bottom: 16px;"></div>
+        </div>
+        <div class="white-box">
+            <div class="skeleton" style="width: 150px; height: 24px; margin-bottom: 20px;"></div>
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:15px; margin-bottom:20px;">
+                <div class="skeleton" style="width: 100%; height: 80px; border-radius: 12px;"></div>
+                <div class="skeleton" style="width: 100%; height: 80px; border-radius: 12px;"></div>
+            </div>
+            <div class="skeleton" style="width: 100%; height: 280px; border-radius: 12px;"></div>
+        </div>
+    </main>
+
+    <aside class="v02-lnb" id="realLnb" style="display: none;"></aside>
+
+    <main class="v02-main" id="realMain" style="display: none;">
+        <div class="white-box">
+            <h2 class="section-title">📦 생산 및 재고 관제탑 <span class="current-model-badge" id="uiCurrentModel"></span></h2>
+            <div class="yield-number">
+                <p>완제품 출고 가능 수량 (목표: <span id="uiTarget">0</span> Set)</p>
+                <h2 id="uiOutput">0</h2>
+            </div>
+            <div class="yield-bar-bg"><div class="yield-bar-fill" id="uiYieldBar"></div></div>
+            
+            <button class="stock-accordion-btn" onclick="toggleStockList()">
+                하위 부품 실시간 재고 확인 <span id="stockToggleIcon">▼</span>
+            </button>
+            <div class="stock-list-wrap" id="uiStockList"></div>
+        </div>
+
+        <div class="white-box">
+            <h2 class="section-title">💰 실시간 재무 보드 및 원가 분석</h2>
+            <div class="finance-summary">
+                <div class="fs-card"><div class="fs-title">자산 투자 총액 (금형/지그)</div><div class="fs-val" id="uiCapex">₩ 0</div></div>
+                <div class="fs-card" style="background:#e8f0fe; border-color:#1a73e8;">
+                    <div class="fs-title" style="color:#1a73e8;">대당 생산원가 <span style="font-size:10px; font-weight:500;">(관리비 포함)</span></div>
+                    <div class="fs-val" style="color:#1a73e8;" id="uiBomTotal">₩ 0</div>
+                </div>
+            </div>
+
+            <div class="price-simulator-compact">
+                <div class="ps-header"><span class="ps-title">📈 시장 판매가 (Live 시뮬레이터)</span></div>
+                <div class="price-input-wrap">
+                    <input type="text" id="inputPrice" class="price-input" placeholder="판매가 입력 (원)" oninput="formatPriceInput(this)">
+                    <button class="btn-save-price" onclick="saveMarketPrice()">BEP 갱신</button>
+                </div>
+                <div class="margin-result"><span class="margin-label">예상 대당 마진</span><span class="margin-val" id="uiMarginResult">-</span></div>
+            </div>
+
+            <div class="bep-canvas-box">
+                <div id="v02ApexChart"></div>
+                <div id="chartOverlay" class="chart-overlay">
+                    <div class="overlay-text-box">
+                        <span style="font-size: 14px; font-weight: 800; color: #ffffff; display: block; margin-bottom: 6px;">손익분기점 분석 대기 중</span>
+                        <span style="font-size: 12px; font-weight: 600; color: #94A3B8;">위 항목에 시장 판매가를 입력해 주세요.</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="top-bom-list">
+                <div class="tb-title">📊 원가 비중 TOP 3 핵심 부품</div>
+                <div id="uiTopBom"></div>
+            </div>
+
+            <button class="btn-download" onclick="downloadBOM_Excel()">📥 상세 파츠마스터(BOM) 엑셀 다운로드</button>
+        </div>
+
+        <div class="white-box">
+            <h2 class="section-title">🚨 현장 라이브 피드 (이슈 및 원가 방어)</h2>
+            <div class="timeline-list" id="uiTimelineFeed"></div>
+        </div>
+    </main>
+</div>
+
+<footer class="mm-micro-footer maker-app-locked">
+    <div><span>상호명: 메이커몬 | 주식회사 아임원</span> <span class="footer-div">|</span> <span>대표자: 강동민</span> <span class="footer-div">|</span> <span>사업자등록번호: 792-87-01360</span></div>
+    <div><span>통신판매업 신고번호: 제 2024-고양덕양구-0177 호</span> <span class="footer-div">|</span> <span>이메일: aimwon01@gmail.com</span></div>
+    <div><span>경기도 고양시 덕양구 향동로 217, DMC플렉스데시앙 B동 1125호</span></div>
+    <div class="footer-copy"><span>Copyright © 2026 MAKERMONE. All rights reserved.</span></div>
+</footer>
+
+<script>
+// =========================================================================
+// 1. 파이썬 서버가 주입한 동적 환경 변수 및 데이터
+// =========================================================================
+const SECRET_CODE = "{{ secret_code }}"; 
+const CURRENT_CLIENT_CODE = "{{ client_code }}"; // 예: BH (2자리)
+const TARGET_PROJECT = "{{ target }}";           // 타겟 프로젝트 (예: BH03V02)
+const WEB_APP_URL = "{{ master_db_api_url }}";   // 데이터 저장(POST)용으로 유지
+
+// 🚀 fetch 없이 즉시 로딩될 V02 프로젝트 전체 데이터
+const PRELOADED_DATA = {{ data | tojson }};
+
+let globalV02Data = {};
+let currentV02Project = "";
+let totalProductionCost = 0; 
+let v02Chart = null;
+
+// =========================================================================
+// 2. Auth 검증 및 렌더링 시작 로직
+// =========================================================================
+window.addEventListener('DOMContentLoaded', () => {
+    const isAuth = sessionStorage.getItem('mm_authenticated');
+    const appContents = document.querySelectorAll('.maker-app-locked');
+    if(isAuth === 'true') {
+        document.getElementById('mmAuthWall').style.display = 'none';
+        appContents.forEach(el => el.classList.remove('maker-app-locked'));
+        initV02Dashboard(); // 💡 V02 전용 함수로 수정
+    }
+});
+
+function checkAuth() {
+    const input = document.getElementById('mmAuthInput').value;
+    if(input === SECRET_CODE) {
+        sessionStorage.setItem('mm_authenticated', 'true');
+        document.getElementById('mmAuthWall').style.display = 'none';
+        document.querySelectorAll('.maker-app-locked').forEach(el => el.classList.remove('maker-app-locked'));
+        initV02Dashboard(); // 💡 V02 전용 함수로 수정
+    } else {
+        alert("보안 코드가 일치하지 않습니다.");
+        document.getElementById('mmAuthInput').value = "";
+    }
+}
+
+// =========================================================================
+// 3. SPA 라우터 (Iframe 내부 이동)
+// =========================================================================
+function routeTo(pageType, targetCode = "") {
+    const codeToUse = targetCode || currentV02Project || TARGET_PROJECT;
+    const clientPrefix = CURRENT_CLIENT_CODE.substring(0, 2); 
+    
+    if (pageType === 'BH') { 
+        window.location.href = `/app?code=${clientPrefix}&view=main`;
+    } 
+    else if (pageType === 'V01') { 
+        window.location.href = `/app?code=${clientPrefix}&view=v01&target=${codeToUse.replace('V02', 'V01')}`;
+    } 
+    else if (pageType === 'V02') { 
+        window.location.href = `/app?code=${clientPrefix}&view=v02&target=${codeToUse}`;
+    }
+}
+
+function triggerToast(msg) {
+    const toast = document.getElementById('topToast');
+    document.getElementById('toastMsg').innerHTML = msg;
+    toast.classList.add('show');
+    setTimeout(() => { toast.classList.remove('show'); }, 4000);
+}
+
+// =========================================================================
+// 4. V02 생산 대시보드 렌더링 코어 (오류 완벽 교정)
+// =========================================================================
+function initV02Dashboard() {
+    // 🚀 고객 UX(감성)를 위해 의도적으로 0.8초 동안 스켈레톤 로딩 애니메이션을 유지합니다.
+    setTimeout(() => {
+        // 1. 0.8초 뒤 스켈레톤 파괴
+        document.getElementById('skeletonLnb').style.display = "none";
+        document.getElementById('skeletonMain').style.display = "none";
+
+        const projData = PRELOADED_DATA;
+
+        if(projData && Object.keys(projData).length > 0) {
+            globalV02Data = projData; 
+            const availableKeys = Object.keys(globalV02Data);
+
+            document.getElementById('realLnb').style.display = "flex";
+            document.getElementById('realMain').style.display = "flex";
+            
+            currentV02Project = (TARGET_PROJECT && availableKeys.includes(TARGET_PROJECT)) ? TARGET_PROJECT : availableKeys[0];
+            renderV02LNB();
+            
+            setTimeout(() => { triggerToast("실시간 양산 관제 데이터가 동기화되었습니다."); }, 500);
+        } else {
+            document.getElementById('realMain').style.display = "flex";
+            document.getElementById('realMain').innerHTML = '<div class="white-box" style="text-align:center; padding: 40px; font-weight:800; color:#666;">진행 중인 양산 프로젝트가 없습니다.</div>';
+        }
+    }, 800); // 👈 0.8초 (800ms) 딜레이
+}
+
+// 💡 즉시 스위칭(Zero-Latency) 함수 신설
+function switchV02Project(key) {
+    currentV02Project = key;
+    renderV02LNB();
+}
+
+function renderV02LNB() {
+    const lnbArea = document.getElementById('realLnb');
+    let html = `
+    <div class="nav-hub">
+        <button class="nav-btn" onclick="routeTo('BH')">🏠 메인 보드</button>
+        <button class="nav-btn" onclick="routeTo('V01', '${currentV02Project.replace('V02','V01')}')">🔬 R&D 센터</button>
+        <button class="nav-btn active">🏭 양산 관제</button>
+    </div>
+    <div class="lnb-title">진행 프로젝트</div>
+    <div class="project-scroll-wrap">`;
+    
+    Object.keys(globalV02Data).forEach((key) => {
+        const isActive = (key === currentV02Project) ? 'active' : '';
+        // 🚨 수정: Iframe 새로고침 없이 즉시 JS 렌더링 스위칭으로 변경
+        html += `<button class="lnb-card ${isActive}" onclick="switchV02Project('${key}')"><span class="lnb-code">${key}</span><span class="lnb-status">🟢 양산 중</span></button>`;
+    });
+    html += `</div>`;
+    lnbArea.innerHTML = html;
+    
+    loadV02Data(currentV02Project);
+}
+
+// --- 이하 기존 V02 화면 전용 렌더링 함수들 완벽 유지 ---
+
+// 💡 V02 코드 에디터: 기존 loadV02Data 함수 교체 (이중 계산 방지)
+function loadV02Data(code) {
+    if(!globalV02Data[code]) return;
+    const data = globalV02Data[code];
+    const mgmtFeeRate = (data.mgmt_fee_percent || 15) / 100;
+    
+    document.getElementById('uiCurrentModel').innerText = `현재 모델: ${code}`;
+    document.getElementById('uiOutput').innerText = (data.current_output || 0).toLocaleString();
+    document.getElementById('uiTarget').innerText = (data.target_qty || 0).toLocaleString();
+    const targetQ = data.target_qty || 1; 
+    const yieldPercent = Math.min(((data.current_output || 0) / targetQ) * 100, 100);
+    setTimeout(() => { document.getElementById('uiYieldBar').style.width = yieldPercent + '%'; }, 100);
+
+    const stockArea = document.getElementById('uiStockList');
+    if(data.stock && data.stock.length > 0) {
+        stockArea.innerHTML = data.stock.map(s => {
+            let alertHtml = '';
+            if(s.type === 'danger') alertHtml = '<span class="stock-alert">재고 부족</span>';
+            else if(s.type === 'warn') alertHtml = '<span class="stock-alert" style="background:#fff4e5; color:#e65100;">안전재고 미달</span>';
+            return `<div class="stock-item"><span>${s.name} ${alertHtml}</span><span>${s.qty} / ${s.safe}</span></div>`;
+        }).join('');
+    } else {
+        stockArea.innerHTML = '<div style="padding:10px; color:#888; font-size:12px;">재고 경고가 없습니다.</div>';
+    }
+
+    document.getElementById('uiCapex').innerText = `₩ ${(data.allocated_capex || 0).toLocaleString()}`;
+    
+    // 🚨 [수정] Code.gs가 보낸 b.unit_cost는 사실상 L열(생산원가 총액)입니다.
+    totalProductionCost = 0;
+    if(data.bom) { 
+        data.bom.forEach(b => { totalProductionCost += (b.unit_cost || 0); }); 
+    }
+    document.getElementById('uiBomTotal').innerText = `₩ ${totalProductionCost.toLocaleString()}`;
+    
+    if(data.market_price) { document.getElementById('inputPrice').value = data.market_price.toLocaleString(); }
+    else { document.getElementById('inputPrice').value = ''; }
+    
+    calculateMarginAndChart(); 
+
+    if(data.bom && data.bom.length > 0) {
+        const sortedBom = [...data.bom].map(b => {
+            // L열 총액(b.unit_cost)을 기준으로 내림차순 정렬
+            b.rowTotalL = b.unit_cost || 0; 
+            b.ratio = ((b.rowTotalL / (totalProductionCost || 1)) * 100).toFixed(1);
+            return b;
+        }).sort((a, b) => b.rowTotalL - a.rowTotalL).slice(0, 3);
+
+        document.getElementById('uiTopBom').innerHTML = sortedBom.map((b, idx) => `
+            <div class="tb-item"><div class="tb-rank">${idx + 1}</div><div class="tb-info"><span class="tb-name">${b.name}</span><span class="tb-desc">${b.no} | 소요량: ${b.qty}개</span></div><div><div class="tb-cost">₩ ${b.rowTotalL.toLocaleString()}</div><div class="tb-ratio">${b.ratio}%</div></div></div>
+        `).join('');
+    } else {
+        document.getElementById('uiTopBom').innerHTML = '<div style="padding:20px; color:#999; text-align:center;">BOM 데이터가 없습니다.</div>';
+    }
+
+    const feedArea = document.getElementById('uiTimelineFeed');
+    if(data.feed && data.feed.length > 0) {
+        feedArea.innerHTML = data.feed.map(f => {
+            let tagHtml = '';
+            if(f.type === 'price') tagHtml = '<span class="ti-tag tag-price">원가 혁신</span>';
+            else if(f.type === 'tool') tagHtml = '<span class="ti-tag tag-tool">금형 점검</span>';
+            else if(f.type === 'stock') tagHtml = '<span class="ti-tag tag-stock">재고 경고</span>';
+            return `<div class="timeline-item"><span class="ti-date">${f.date}</span><div class="ti-body">${tagHtml}<br>${f.title}</div></div>`;
+        }).join('');
+    } else {
+        feedArea.innerHTML = '<div style="padding:20px; color:#888; font-size:13px; font-weight:600;">등록된 피드가 없습니다.</div>';
+    }
+}
+
+function toggleStockList() {
+    const list = document.getElementById('uiStockList');
+    const icon = document.getElementById('stockToggleIcon');
+    if(list.classList.contains('open')) { list.classList.remove('open'); icon.innerText = '▼'; } 
+    else { list.classList.add('open'); icon.innerText = '▲'; }
+}
+
+function formatPriceInput(el) {
+    let numStr = el.value.replace(/[^0-9]/g, '');
+    if(numStr) { el.value = Number(numStr).toLocaleString(); } else { el.value = ''; }
+    calculateMarginAndChart();
+}
+
+function getRawPrice() {
+    let val = document.getElementById('inputPrice').value;
+    return Number(val.replace(/,/g, '')) || 0;
+}
+
+function calculateMarginAndChart() {
+    const price = getRawPrice();
+    const resEl = document.getElementById('uiMarginResult');
+    const data = globalV02Data[currentV02Project];
+    
+    if(price <= 0) {
+        resEl.innerText = "-"; resEl.className = "margin-val"; drawV02Chart(0, data); return;
+    }
+    
+    const margin = price - totalProductionCost; 
+    const marginRatio = ((margin / price) * 100).toFixed(1);
+    
+    if(margin > 0) { resEl.innerText = `₩ ${margin.toLocaleString()} (${marginRatio}%)`; resEl.className = "margin-val positive"; } 
+    else { resEl.innerText = `손실 ₩ ${Math.abs(margin).toLocaleString()} (${marginRatio}%)`; resEl.className = "margin-val negative"; }
+    
+    drawV02Chart(price, data);
+}
+
+function drawV02Chart(marketPrice, data) {
+    const overlay = document.getElementById('chartOverlay');
+    const chartArea = document.getElementById('v02ApexChart');
+    if(v02Chart) { v02Chart.destroy(); v02Chart = null; }
+
+    if (marketPrice <= 0) {
+        overlay.style.display = 'flex'; chartArea.style.filter = 'blur(4px)'; 
+        const dummyOpts = { series: [{ name: "생산 비용", data: [0, 0] }, { name: "예상 매출", data: [0, 0] }], chart: { type: 'line', height: 280, toolbar: { show: false } }, xaxis: { categories: [0, 1000] }, yaxis: { labels: { show: false } }, grid: { show: true, borderColor: '#f1f1f1' } };
+        v02Chart = new ApexCharts(chartArea, dummyOpts); v02Chart.render(); return;
+    }
+    
+    overlay.style.display = 'none'; chartArea.style.filter = 'none';
+    const currentOutput = data.current_output || 0;
+    const maxQ = Math.max(currentOutput * 1.5, 1000);
+    const xCat = [0, Math.floor(maxQ*0.5), currentOutput, Math.floor(maxQ)];
+    const costData = xCat.map(q => Math.floor((data.allocated_capex || 0) + (q * totalProductionCost)));
+    const revData = xCat.map(q => Math.floor(q * marketPrice));
+
+    const opts = {
+        series: [{ name: "누적 생산비용 (CAPEX 포함)", data: costData }, { name: "누적 매출액", data: revData }],
+        chart: { type: 'line', height: 280, toolbar: { show: false }, zoom: { enabled: false }, fontFamily: 'Pretendard', animations: { enabled: true, easing: 'easeinout', speed: 400 } },
+        colors: ['#ea4335', '#1a73e8'], stroke: { curve: 'straight', width: 3 },
+        xaxis: { categories: xCat, title: { text: "생산 수량 (Set)", style: { fontSize: '11px', color: '#888' } } },
+        yaxis: { labels: { formatter: v => "₩"+(v/10000).toFixed(0)+"만" } },
+        grid: { show: true, borderColor: '#f1f1f1' }, tooltip: { y: { formatter: v => "₩ " + v.toLocaleString() } },
+        legend: { position: 'top', horizontalAlign: 'right', fontSize: '12px' },
+        annotations: { xaxis: [{ x: currentOutput, borderColor: '#0f9d58', strokeDashArray: 4, label: { text: '현재 생산량', style: { color: '#fff', background: '#0f9d58' } } }] }
+    };
+    v02Chart = new ApexCharts(chartArea, opts); v02Chart.render();
+}
+
+function saveMarketPrice() {
+    const price = getRawPrice();
+    if(price <= 0) { alert('시장 판매가를 올바르게 입력해주세요.'); return; }
+    const btn = document.querySelector('.btn-save-price');
+    btn.innerText = "저장 중..."; btn.style.background = "#ccc";
+    
+    // 💡 차후 실제 DB 저장을 위해 WEB_APP_URL로 fetch(POST)가 들어갈 자리입니다.
+    
+    setTimeout(() => {
+        btn.innerText = "저장 완료"; btn.style.background = "#0f9d58";
+        triggerToast(`시장 판매가가 ₩${price.toLocaleString()} 로 안전하게 기록되었습니다.`);
+        setTimeout(() => { btn.innerText = "BEP 갱신"; btn.style.background = "#111"; }, 2000);
+    }, 600);
+}
+
+// =========================================================================
+// 📥 BOM 상세 명세서 엑셀(.xls) 즉시 다운로드 (메이커몬 원가 수식 적용)
+// =========================================================================
+function downloadBOM_Excel() {
+    if(!currentV02Project || !globalV02Data[currentV02Project]) return;
+    
+    const data = globalV02Data[currentV02Project];
+    if(!data.bom || data.bom.length === 0) {
+        alert("현재 양산 모델에 등록된 BOM 데이터가 없습니다.");
+        return;
+    }
+
+    const mgmtFeeRate = (data.mgmt_fee_percent || 15) / 100;
+
+    let tableHtml = `
+        <html xmlns:x="urn:schemas-microsoft-com:office:excel">
+        <head>
+            <meta charset="utf-8">
+            <style>
+                table { border-collapse: collapse; width: 100%; font-family: 'Malgun Gothic', sans-serif; }
+                th { background-color: #1a73e8; color: white; font-weight: bold; border: 1px solid #dddddd; padding: 10px; font-size: 13px; }
+                td { border: 1px solid #dddddd; padding: 8px; text-align: center; font-size: 12px; }
+                .text-left { text-align: left; }
+                .money { text-align: right; mso-number-format:"\\#\\,\\#\\#0"; }
+                .total-row { background-color: #f8f9fa; font-weight: bold; }
+            </style>
+        </head>
+        <body>
+            <h3>📦 [${currentV02Project}] 양산 BOM 상세 명세서</h3>
+            <table>
+                <tr>
+                    <th>순번</th>
+                    <th>부품명</th>
+                    <th>품번(도면번호)</th>
+                    <th>재질/사양</th>
+                    <th>소요량[G]</th>
+                    <th>제품단가[I]</th>
+                    <th>제품비[J]</th>
+                    <th>공정관리비(${data.mgmt_fee_percent || 15}%)[K]</th>
+                    <th>생산원가[L]</th>
+                </tr>
+    `;
+
+    let sumProduct = 0;
+    let sumMgmt = 0;
+    let sumTotal = 0;
+
+    data.bom.forEach((b, index) => {
+        const qty = b.qty || 1;
+        
+        // 🚨 역산 로직: Code.gs가 보낸 L열(생산원가 총액)을 기준으로 I, J, K열을 분리합니다.
+        const L_total = b.unit_cost || 0; 
+        const J_total = Math.round(L_total / (1 + mgmtFeeRate)); // 제품비 역산
+        const K_mgmt = L_total - J_total;                        // 공정관리비 역산
+        const I_unit = Math.round(J_total / qty);                // 제품단가 역산
+
+        sumProduct += J_total;
+        sumMgmt += K_mgmt;
+        sumTotal += L_total;
+
+        tableHtml += `
+            <tr>
+                <td>${index + 1}</td>
+                <td class="text-left">${b.name || ''}</td>
+                <td class="text-left">${b.no || ''}</td>
+                <td class="text-left">${b.material || ''}</td>
+                <td>${qty}</td>
+                <td class="money">${I_unit}</td>
+                <td class="money">${J_total}</td>
+                <td class="money">${K_mgmt}</td>
+                <td class="money" style="color:#1a73e8; font-weight:bold;">${L_total}</td>
+            </tr>
+        `;
+    });
+
+    tableHtml += `
+            <tr class="total-row">
+                <td colspan="5">총 계</td>
+                <td>-</td>
+                <td class="money">${sumProduct}</td>
+                <td class="money">${sumMgmt}</td>
+                <td class="money" style="color:#1a73e8; font-size:14px;">${sumTotal}</td>
+            </tr>
+    </table></body></html>`;
+
+    const blob = new Blob([tableHtml], { type: 'application/vnd.ms-excel' });
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(blob);
+    link.download = `${currentV02Project}_BOM_상세명세서.xls`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+
+    triggerToast(`📥 ${currentV02Project} BOM 엑셀 다운로드가 완료되었습니다.`);
+}
+
+</script>

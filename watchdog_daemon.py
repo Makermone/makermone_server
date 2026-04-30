@@ -39,13 +39,24 @@ class MakerMoneHandler(FileSystemEventHandler):
                     print(f"❌ 자동 스캔 중 오류 발생: {e}")
 
 def start_daemon():
+    print("="*60)
+    print("🛡️ [메이커몬 Zero-Touch 팩토리] Watchdog 데몬 가동 전 초기 동기화 진행 중...")
+    print("🔍 데몬이 꺼져있던 동안 누락된 신규 도면을 탐색합니다.")
+    print("="*60)
+    
+    # 🚀 [추가된 신규 로직] 감시(Observer) 시작 전, 누락분 전수 조사 1회 선제 실행
+    try:
+        run_test_scan(MASTER_PATH)
+    except Exception as e:
+        print(f"❌ 초기 동기화 중 오류 발생: {e}")
+
     event_handler = MakerMoneHandler()
     observer = Observer()
     observer.schedule(event_handler, MASTER_PATH, recursive=True)
     observer.start()
     
-    print("="*60)
-    print("🛡️ [메이커몬 Zero-Touch 팩토리] Watchdog 데몬 가동 시작...")
+    print("\n" + "="*60)
+    print("👀 실시간 감시 모드로 전환되었습니다...")
     print(f"📂 감시 경로: {MASTER_PATH}")
     print("="*60)
     

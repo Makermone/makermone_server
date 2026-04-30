@@ -1,0 +1,398 @@
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css">
+<script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"> <!-- 모바일 화면에 맞춰 줄임 -->
+
+<style>
+    /* ==========================================================================
+       [공통 CSS] 메이커몬 App-UI 디자인 시스템 (BH, V01, V02 100% 동일)
+       ========================================================================== */
+    :root { --mm-blue: #1a73e8; --mm-orange: #ffa100; --mm-green: #0f9d58; --mm-red: #ea4335; --mm-gray: #5f6368; --bg-gray: #f8f9fa; --border: #eaebed; }
+    /* 🟢 수정 후 (정상: #footer, #doz_footer 삭제) */
+    html, body, #doz_body, #visual, #main, .section_wrap, .doz_sys { box-shadow: none !important; background-image: none !important; background-color: var(--bg-gray) !important; overflow-x: hidden; margin: 0 !important; padding: 0 !important; }
+    * { -webkit-tap-highlight-color: transparent; outline: none; box-sizing: border-box !important; font-family: 'Pretendard', sans-serif !important; }
+
+    /* 🔐 Auth Wall */
+    #mmAuthWall { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: #fff; z-index: 2147483647; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+    .auth-box { text-align: center; max-width: 320px; width: 100%; padding: 0 20px; }
+    .auth-logo { height: 40px; margin-bottom: 30px; }
+    .auth-title { font-size: 20px; font-weight: 800; color: #111; margin-bottom: 8px; }
+    .auth-desc { font-size: 13px; color: #666; margin-bottom: 24px; line-height: 1.5; }
+    .auth-input { width: 100%; padding: 14px; border: 1px solid #ccc; border-radius: 8px; font-size: 16px; font-weight: 700; text-align: center; margin-bottom: 12px; letter-spacing: 2px; }
+    .auth-input:focus { border-color: var(--mm-blue); }
+    .auth-btn { width: 100%; background: #111; color: #fff; padding: 14px; border: none; border-radius: 8px; font-size: 15px; font-weight: 800; cursor: pointer; transition: 0.2s; }
+    .auth-btn:hover { background: var(--mm-blue); }
+    .maker-app-locked { display: none !important; }
+
+    /* 🔔 Toast & App-Bar */
+    .top-toast-notifier { position: fixed; top: -150px; left: 50%; transform: translateX(-50%); background: rgba(32, 33, 36, 0.98); backdrop-filter: blur(10px); color: #ffffff; padding: 14px 28px; border-radius: 30px; font-size: 14px; font-weight: 700; box-shadow: 0 10px 30px rgba(0,0,0,0.25); transition: top 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275), opacity 0.4s ease; z-index: 2147483647; display: flex; align-items: center; gap: 10px; white-space: nowrap; border: 1px solid rgba(255,255,255,0.1); opacity: 0; visibility: hidden; }
+    .top-toast-notifier.show { top: 80px; opacity: 1; visibility: visible; }
+    
+    .mm-app-header { position: fixed; top: 0; left: 0; width: 100%; height: 64px; background: #fff; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; padding: 0 24px; z-index: 2147483646 !important; transform: translateZ(0); box-shadow: 0 2px 10px rgba(0,0,0,0.02) !important; }
+    .mm-logo img { height: 26px !important; width: auto; object-fit: contain; cursor: pointer; } 
+    .mm-security-badge { display: flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 700; color: #111; background: #f1f3f4; padding: 6px 12px; border-radius: 20px; white-space: nowrap; }
+    .pulse-dot { width: 8px; height: 8px; background: #00e676; border-radius: 50%; animation: pulse 1.5s infinite; }
+    @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(0, 230, 118, 0.4); } 70% { box-shadow: 0 0 0 6px rgba(0, 230, 118, 0); } 100% { box-shadow: 0 0 0 0 rgba(0, 230, 118, 0); } }
+
+    /* 💀 Skeleton & Footer */
+    .skeleton-wrap { position: absolute; top: 94px; left: 50%; transform: translateX(-50%); width: 100%; max-width: 1200px; background: transparent; z-index: 1000; padding: 0 15px; box-sizing: border-box; }
+    .skeleton { background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%); background-size: 200% 100%; animation: shimmer 1.5s infinite; border-radius: 8px; color: transparent !important; border: none !important; box-shadow: none !important; user-select: none; pointer-events: none; }
+    .skeleton * { visibility: hidden; }
+    @keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+
+    .mm-micro-footer { position: relative; z-index: 10; width: 100%; text-align: center; padding: 40px 20px 140px 20px; font-size: 12px; color: #666; line-height: 1.6; border-top: 1px solid var(--border); background: var(--bg-gray); word-break: keep-all; }
+    .mm-micro-footer span { display: inline-block; font-weight: 500; }
+    .footer-div { margin: 0 8px; color: #ccc; }
+    .footer-copy { margin-top: 16px !important; color: #888; font-size: 11px; }
+
+    /* ==========================================================================
+       [BH 전용 CSS] 메인 대시보드
+       ========================================================================== */
+    .maker-app { position: relative; z-index: 10; max-width: 900px; margin: 0 auto; padding: 94px 15px 100px 15px; color: #202124; word-break: keep-all; line-height: 1.5; letter-spacing: -0.3px; user-select: none; min-height: 100vh; }
+    
+    .hero-card { background: linear-gradient(135deg, #1a73e8, #004ba0); color: #fff; border-radius: 20px; padding: 30px 24px; margin-bottom: 35px; box-shadow: 0 10px 24px rgba(26, 115, 232, 0.15); position: relative; overflow: hidden; }
+    .hero-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+    .hero-title { font-size: 13px; font-weight: 700; opacity: 0.9; }
+    .hero-badge { font-size: 11px; font-weight: 800; background: rgba(255,255,255,0.15); padding: 6px 12px; border-radius: 20px; display: flex; align-items: center; gap: 6px; border: 1px solid rgba(255,255,255,0.2); }
+    .status-dot { width: 8px; height: 8px; background-color: #00e676; border-radius: 50%; box-shadow: 0 0 8px #00e676; animation: pulse-glow 1.5s infinite alternate; }
+    @keyframes pulse-glow { 0% { transform: scale(0.9); opacity: 0.7; } 100% { transform: scale(1.3); opacity: 1; } }
+    .hero-value { font-size: 40px; font-weight: 800; margin-bottom: 12px; letter-spacing: -1px; white-space: nowrap; font-variant-numeric: tabular-nums; height: 48px; display: flex; align-items: center; }
+    .hero-sub { background: rgba(0,0,0,0.2); padding: 8px 14px; border-radius: 10px; font-size: 13px; font-weight: 600; display: inline-block; }
+
+    .section-title { font-size: 18px !important; font-weight: 800 !important; margin: 0 0 16px 0 !important; color: #111 !important; display: flex; align-items: center; gap: 8px; letter-spacing: -0.5px; }
+    .timeline-container { background: #fff; border: 1px solid var(--border); border-radius: 16px; padding: 24px 20px 10px 20px; margin-bottom: 35px; box-shadow: 0 4px 12px rgba(0,0,0,0.02); }
+    .timeline { list-style: none; padding: 0; margin: 0; border-left: 2px solid #e8f0fe; margin-left: 8px; }
+    .timeline-item { position: relative; padding-left: 20px; padding-bottom: 24px; }
+    .timeline-item:last-child { padding-bottom: 0; }
+    .timeline-item::before { content: ''; position: absolute; left: -6px; top: 2px; width: 10px; height: 10px; background: #1a73e8; border-radius: 50%; border: 2px solid #fff; }
+    .tl-date { font-size: 11px; font-weight: 700; color: #1a73e8; margin-bottom: 4px; display: block; }
+    .tl-content { font-size: 14px; font-weight: 600; color: #333; }
+    .tl-project { font-size: 12px; font-weight: 800; color: #111; background: #f1f3f4; padding: 2px 6px; border-radius: 4px; margin-right: 6px; }
+
+    .chart-container { background: #fff; border: 1px solid var(--border); border-radius: 16px; padding: 20px; margin-bottom: 35px; box-shadow: 0 4px 12px rgba(0,0,0,0.02); }
+    .tabs-wrapper { position: relative; margin-bottom: 15px; overflow: hidden; }
+    .model-tabs { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 10px; -webkit-overflow-scrolling: touch; scroll-behavior: smooth; }
+    .model-tabs::-webkit-scrollbar { display: none; }
+    .model-tab { padding: 8px 18px; border-radius: 20px; font-size: 13px; font-weight: 700; background: #fff; color: #555; border: 1px solid var(--border); cursor: pointer; white-space: nowrap; flex-shrink: 0; transition: all 0.2s; }
+    .model-tab.active { background: #e8f0fe; color: var(--mm-blue); border-color: var(--mm-blue); }
+    
+    .chart-summary { display: flex; gap: 15px; margin-bottom: 15px; }
+    .cs-box { flex: 1; min-width: 100px; background: #f8f9fa; padding: 12px; border-radius: 12px; text-align: center; }
+    .cs-label { font-size: 11px; color: #666; font-weight: 600; margin-bottom: 4px; }
+    .cs-value { font-size: 15px; font-weight: 800; color: #111; }
+    
+    .bep-canvas-box { position: relative; width: 100%; height: 320px; border-radius: 12px; background: #fff; overflow: hidden; border: 1px solid var(--border); }
+    #apexChartArea { width: 100%; height: 100%; transition: filter 0.4s ease; }
+    .chart-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255, 255, 255, 0.4); display: none; flex-direction: column; align-items: center; justify-content: center; z-index: 10; }
+    .overlay-text-box { background: rgba(15, 23, 42, 0.95); padding: 20px 24px; border-radius: 16px; box-shadow: 0 10px 25px rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.1); text-align: center; }
+
+    .maker-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px; margin-bottom: 35px; }
+    .project-card { background: #fff; border: 1px solid #e2e5e7; border-radius: 18px; padding: 24px 15px; text-align: center; text-decoration: none !important; color: inherit !important; box-shadow: 0 4px 15px rgba(0,0,0,0.03); transition: transform 0.2s, border-color 0.2s; outline: none; cursor: pointer; }
+    .project-card:hover { border-color: var(--mm-blue); }
+    .p-icon-wrap { margin-bottom: 14px; display: flex; justify-content: center; position: relative; }
+    .p-code { font-size: 16px; font-weight: 800; color: #202124; margin-bottom: 8px; }
+    .p-tag { font-size: 11px; font-weight: 800; padding: 5px 12px; border-radius: 10px; display: inline-block; }
+    .p-tag.v01 { background-color: #fff4e5; color: #e65100; }
+    .p-tag.v02 { background-color: #e8f0fe; color: #1a73e8; }
+    .spin-slow { animation: spin 4s linear infinite; transform-origin: 12px 12px; }
+    .scanner-line { animation: scan 2s ease-in-out infinite alternate; }
+    @keyframes spin { 100% { transform: rotate(360deg); } }
+    @keyframes scan { 0% { transform: translateY(-6px); opacity: 0; } 50% { opacity: 1; } 100% { transform: translateY(16px); opacity: 0; } }
+
+    @media (min-width: 600px) { .maker-grid { grid-template-columns: repeat(3, 1fr); gap: 16px; } }
+    
+    /* [공통 반응형] */
+    @media (max-width: 768px) {
+        .mm-app-header { height: 56px; padding: 0 16px; }
+        .maker-app { padding-top: 86px !important; }
+        .mm-security-badge { font-size: 11px; padding: 4px 8px; }
+        .mm-security-badge span { display: inline-block !important; }
+        .top-toast-notifier.show { top: 70px; }
+        .top-toast-notifier { width: 85%; padding: 12px 20px; font-size: 13px; justify-content: center; }
+        .mm-micro-footer { padding: 30px 15px 120px 15px; font-size: 12px; }
+        .mm-micro-footer > div { margin-top: 0 !important; }
+        .mm-micro-footer span { display: block; margin-bottom: 6px; line-height: 1.4; color: #555; }
+        .footer-copy span { color: #888; margin-top: 12px; font-size: 11px; }
+        .footer-div { display: none !important; }
+        .hero-value { font-size: 32px; height: 38px; }
+    }
+</style>
+
+<div id="mmAuthWall">
+    <div class="auth-box">
+        <img src="https://drive.google.com/thumbnail?id=1uOrzmd-dT18EOQFs8WyR5gSs7Jis-iWR&sz=w800" class="auth-logo" alt="MakerMon">
+        <div class="auth-title">Secured Access</div>
+        <div class="auth-desc">고객사 전용 관제 센터입니다.<br>부여받은 보안 코드를 입력해 주세요.</div>
+        <input type="password" id="mmAuthInput" class="auth-input" placeholder="••••" onkeypress="if(event.keyCode==13) checkAuth()">
+        <button class="auth-btn" onclick="checkAuth()">접속하기</button>
+    </div>
+</div>
+
+<div id="topToast" class="top-toast-notifier maker-app-locked">
+    <span>🔔</span> <span id="toastMsg">데이터가 갱신되었습니다.</span>
+</div>
+
+<header class="mm-app-header maker-app-locked">
+    <div class="mm-logo" onclick="routeTo('BH')">
+        <img src="https://drive.google.com/thumbnail?id=1uOrzmd-dT18EOQFs8WyR5gSs7Jis-iWR&sz=w800" alt="MakerMone Logo">
+    </div>
+    <div class="mm-security-badge">
+        <div class="pulse-dot"></div>
+        <span>Secured Center</span>
+    </div>
+</header>
+
+<div class="maker-app maker-app-locked">
+    <div id="loadingSkeleton" class="skeleton-wrap" style="position:relative; top:0; left:0; transform:none; padding:0; width:100%;">
+        <div class="skeleton" style="height: 190px; border-radius: 20px; width:100%; margin-bottom:25px;"></div>
+        <div class="skeleton" style="height: 200px; border-radius: 16px; width:100%; margin-bottom:25px;"></div>
+        <div class="skeleton" style="height: 300px; border-radius: 16px; width:100%;"></div>
+    </div>
+
+    <div id="dashboardContent" style="display: none;">
+        <div class="hero-card">
+            <div class="hero-header"><span class="hero-title">🛡️ 총 관리 자산 규모 (CAPEX)</span><span class="hero-badge"><span class="status-dot"></span>AI 공정 최적화</span></div>
+            <div class="hero-value"><span id="valAsset" data-target="0">₩ 0</span></div>
+            <div class="hero-sub">누적 완제품 생산량 : <span id="valOutput" data-target="0" style="color:#ffa100; font-weight:900;">0</span> Set</div>
+        </div>
+
+        <h2 class="section-title"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#1a73e8" stroke-width="2.5"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline></svg>Live 공정 타임라인</h2>
+        <div class="timeline-container"><ul class="timeline" id="timelineFeed"></ul></div>
+
+        <h2 class="section-title"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#4caf50" stroke-width="2.5"><line x1="18" y1="20" x2="18" y2="10"></line><line x1="12" y1="20" x2="12" y2="4"></line><line x1="6" y1="20" x2="6" y2="14"></line></svg>양산 모델 채산성 분석</h2>
+        <div class="chart-container" id="bepSection" style="display: none;">
+            <div class="tabs-wrapper"><div class="model-tabs" id="chartTabs"></div></div>
+            <div class="chart-summary">
+                <div class="cs-box"><div class="cs-label">할당된 자산 (CAPEX)</div><div class="cs-value" id="csCapex">₩ 0</div></div>
+                <div class="cs-box"><div class="cs-label">누적 생산량</div><div class="cs-value" style="color:#1a73e8;" id="csOutput">0대</div></div>
+            </div>
+            <div class="bep-canvas-box">
+                <div id="apexChartArea"></div>
+                <div id="chartOverlay" class="chart-overlay">
+                    <div class="overlay-text-box">
+                        <span style="font-size: 14px; font-weight: 800; color: #ffffff; display: block; margin-bottom: 8px;">판가(시장 판매가) 데이터가 없습니다.</span>
+                        <span style="font-size: 13px; font-weight: 600; color: #94A3B8; line-height: 1.5;">하단 파이프라인 요약에서 해당 모델을 선택하여<br>상세 페이지에서 판가를 입력해 주세요.</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <h2 class="section-title"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#111" stroke-width="2.5"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"></rect><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path></svg>파이프라인 요약</h2>
+        <div class="maker-grid" id="pipelineGrid"></div>
+    </div>
+</div>
+
+<footer class="mm-micro-footer maker-app-locked">
+    <div><span>상호명: 메이커몬 | 주식회사 아임원</span> <span class="footer-div">|</span> <span>대표자: 강동민</span> <span class="footer-div">|</span> <span>사업자등록번호: 792-87-01360</span></div>
+    <div><span>통신판매업 신고번호: 제 2024-고양덕양구-0177 호</span> <span class="footer-div">|</span> <span>이메일: aimwon01@gmail.com</span></div>
+    <div><span>경기도 고양시 덕양구 향동로 217, DMC플렉스데시앙 B동 1125호</span></div>
+    <div class="footer-copy"><span>Copyright © 2026 MAKERMONE. All rights reserved.</span></div>
+</footer>
+
+<script>
+// =========================================================================
+// 1. 파이썬 서버가 주입한 동적 환경 변수 및 데이터
+// =========================================================================
+const SECRET_CODE = "{{ secret_code }}"; 
+const CURRENT_CLIENT_CODE = "{{ client_code }}"; // 예: BH
+const WEB_APP_URL = "{{ master_db_api_url }}";
+
+// 🚀 핵심: 데이터 읽기(GET)는 fetch 없이 즉시 로딩
+const PRELOADED_DATA = {{ data | tojson }}; 
+
+let globalModelsData = {};
+let mainApexChart = null;
+
+// =========================================================================
+// 2. Auth 검증 및 렌더링 시작 로직
+// =========================================================================
+window.addEventListener('DOMContentLoaded', () => {
+    const isAuth = sessionStorage.getItem('mm_authenticated');
+    const appContents = document.querySelectorAll('.maker-app-locked');
+    if(isAuth === 'true') {
+        document.getElementById('mmAuthWall').style.display = 'none';
+        appContents.forEach(el => el.classList.remove('maker-app-locked'));
+        initMainDashboard(); // 데이터 렌더링 즉시 시작
+    }
+});
+
+function checkAuth() {
+    const input = document.getElementById('mmAuthInput').value;
+    if(input === SECRET_CODE) {
+        sessionStorage.setItem('mm_authenticated', 'true');
+        document.getElementById('mmAuthWall').style.display = 'none';
+        document.querySelectorAll('.maker-app-locked').forEach(el => el.classList.remove('maker-app-locked'));
+        initMainDashboard(); 
+    } else {
+        alert("보안 코드가 일치하지 않습니다.");
+        document.getElementById('mmAuthInput').value = "";
+    }
+}
+
+// =========================================================================
+// 3. SPA 라우터 (Iframe 내부 이동)
+// =========================================================================
+function routeTo(pageType, targetCode = "") {
+    const codeToUse = targetCode || CURRENT_CLIENT_CODE;
+    const clientPrefix = codeToUse.substring(0, 2); 
+    
+    if (pageType === 'BH') { 
+        window.location.href = `/app?code=${clientPrefix}&view=main`;
+    } 
+    else if (pageType === 'V01') { 
+        window.location.href = `/app?code=${clientPrefix}&view=v01&target=${codeToUse}`;
+    } 
+    else if (pageType === 'V02') { 
+        window.location.href = `/app?code=${clientPrefix}&view=v02&target=${codeToUse}`;
+    }
+}
+
+function triggerToast(msg) {
+    const toast = document.getElementById('topToast');
+    document.getElementById('toastMsg').innerHTML = msg;
+    toast.classList.add('show');
+    setTimeout(() => { toast.classList.remove('show'); }, 4000);
+}
+
+// =========================================================================
+// 4. 메인 대시보드 렌더링 코어 (fetch 제거 & 즉시 로딩)
+// =========================================================================
+function initMainDashboard() {
+    // 🚀 UX 통일: 의도적인 0.8초 스켈레톤 유지
+    setTimeout(() => {
+        document.getElementById('loadingSkeleton').style.display = "none";
+        document.getElementById('dashboardContent').style.display = "block";
+
+        const resData = PRELOADED_DATA;
+        if(resData && Object.keys(resData).length > 0) {
+            if(resData.global_summary) {
+                document.getElementById('valAsset').setAttribute('data-target', resData.global_summary.total_asset_value || 0);
+                document.getElementById('valOutput').setAttribute('data-target', resData.global_summary.total_output || 0);
+            }
+            if(resData.models) globalModelsData = resData.models;
+
+            animateCountUp();
+            renderTimeline(resData.v01_projects);
+            renderBEPChartSection();
+            renderPipelineGrid(resData.v01_projects, resData.v02_projects);
+            setTimeout(() => { triggerToast("실시간 관제 데이터가 동기화되었습니다."); }, 500);
+        }
+    }, 800);
+}
+
+// --- 이하 기존 메인 화면 전용 렌더링 함수들 (animateCountUp, renderTimeline, renderBEPChartSection, switchChartData, drawApexChart, renderPipelineGrid) 완벽히 유지 ---
+
+function animateCountUp() {
+    document.querySelectorAll('[data-target]').forEach(counter => {
+        const target = +counter.getAttribute('data-target');
+        let current = 0; const inc = target / 35;
+        if(target === 0) { counter.innerText = '0'; return; }
+        const update = () => {
+            current += inc;
+            if (current < target) {
+                counter.innerText = (counter.id === 'valAsset' ? '₩ ' : '') + Math.ceil(current).toLocaleString();
+                setTimeout(update, 20);
+            } else {
+                counter.innerText = (counter.id === 'valAsset' ? '₩ ' : '') + target.toLocaleString();
+            }
+        };
+        update();
+    });
+}
+
+function renderTimeline(v01) {
+    const feedList = document.getElementById('timelineFeed');
+    let events = [];
+    if(v01) {
+        Object.keys(v01).forEach(pCode => {
+            if(v01[pCode].schedule) v01[pCode].schedule.forEach(item => { if(item.date) events.push({ date: new Date(item.date), code: pCode, content: item.content }); });
+            if(v01[pCode].report) v01[pCode].report.forEach(item => { if(item.report_date) events.push({ date: new Date(item.report_date), code: pCode, content: item.report_title }); });
+        });
+    }
+    events.sort((a, b) => b.date - a.date);
+    let html = events.slice(0, 4).map(ev => {
+        if(isNaN(ev.date.getTime())) return '';
+        const dateStr = ev.date.getFullYear() + '.' + String(ev.date.getMonth()+1).padStart(2,'0') + '.' + String(ev.date.getDate()).padStart(2,'0');
+        return `<li class="timeline-item"><span class="tl-date">${dateStr}</span><div class="tl-content"><span class="tl-project">${ev.code}</span>${ev.content.replace(/\[hl\]([\s\S]*?)\[\/hl\]/gi, '$1').substring(0,40)}...</div></li>`;
+    }).join('');
+    feedList.innerHTML = html || '<li class="timeline-item"><span class="tl-content" style="color:#888;">최근 기록이 없습니다.</span></li>';
+}
+
+function renderBEPChartSection() {
+    const keys = Object.keys(globalModelsData);
+    if(keys.length === 0) return;
+    document.getElementById('bepSection').style.display = 'block';
+    document.getElementById('chartTabs').innerHTML = keys.map((k, i) => `<div class="model-tab ${i===0?'active':''}" onclick="switchChartData('${k}', this)">${k}</div>`).join('');
+    drawApexChart(keys[0]);
+}
+
+function switchChartData(modelKey, el) {
+    document.querySelectorAll('.model-tab').forEach(t => t.classList.remove('active'));
+    el.classList.add('active');
+    drawApexChart(modelKey);
+}
+
+function drawApexChart(modelKey) {
+    const d = globalModelsData[modelKey];
+    document.getElementById('csCapex').innerText = '₩ ' + Math.floor(d.allocated_capex||0).toLocaleString();
+    document.getElementById('csOutput').innerText = (d.output||0).toLocaleString() + '대';
+
+    const overlay = document.getElementById('chartOverlay');
+    const chartArea = document.getElementById('apexChartArea');
+    
+    if(mainApexChart) { mainApexChart.destroy(); mainApexChart = null; }
+
+    if (!(d.market_price > 0)) {
+        overlay.style.display = 'flex';
+        chartArea.style.filter = 'blur(4px)'; 
+        
+        const dummyOpts = {
+            series: [{ name: "예상 비용", data: [1000000, 3000000, 5000000, 8000000] }, { name: "예상 매출", data: [0, 2500000, 6000000, 10000000] }],
+            chart: { type: 'line', height: 320, toolbar: { show: false }, animations: { enabled: true, easing: 'easeinout', speed: 800 } },
+            colors: ['#f44336', '#1a73e8'], stroke: { curve: 'smooth', width: 3 },
+            xaxis: { categories: [0, 250, 500, 1000], title: { text: "생산 수량(대)", style: { fontSize: '11px', color: '#888' } } },
+            yaxis: { labels: { formatter: v => "₩"+(v/10000).toFixed(0)+"만" } },
+            grid: { show: true, borderColor: '#f1f1f1' },
+            legend: { show: false }, tooltip: { enabled: false }
+        };
+        mainApexChart = new ApexCharts(document.querySelector("#apexChartArea"), dummyOpts);
+        mainApexChart.render();
+        return;
+    }
+    
+    overlay.style.display = 'none';
+    chartArea.style.filter = 'none';
+
+    const currentOutput = d.output || 0;
+    const maxQ = Math.max(currentOutput * 1.5, 1000);
+    const xCat = [0, Math.floor(maxQ*0.5), currentOutput, Math.floor(maxQ)];
+    const cost = xCat.map(q => Math.floor((d.allocated_capex||0) + (q * (d.unit_cost||0))));
+    const rev = xCat.map(q => Math.floor(q * d.market_price));
+
+    const opts = {
+        series: [{ name: "누적 비용", data: cost }, { name: "누적 매출액", data: rev }],
+        chart: { type: 'line', height: 320, toolbar: { show: false }, zoom: { enabled: false }, fontFamily: 'Pretendard', animations: { enabled: true } },
+        colors: ['#f44336', '#1a73e8'], stroke: { curve: 'smooth', width: 3 },
+        xaxis: { categories: xCat, title: { text: "수량(대)", style: { fontSize: '11px', color: '#888' } } },
+        yaxis: { labels: { formatter: v => "₩"+(v/10000).toFixed(0)+"만" } },
+        grid: { show: true, borderColor: '#f1f1f1' },
+        tooltip: { y: { formatter: v => "₩ " + v.toLocaleString() } },
+        legend: { position: 'top', horizontalAlign: 'right' },
+        annotations: { xaxis: [{ x: currentOutput, borderColor: '#ffa100', strokeDashArray: 4, label: { text: '현재 생산', style: { color: '#fff', background: '#ffa100' } } }] }
+    };
+
+    mainApexChart = new ApexCharts(document.querySelector("#apexChartArea"), opts);
+    mainApexChart.render();
+}
+
+function renderPipelineGrid(v01, v02) {
+    const grid = document.getElementById('pipelineGrid');
+    const svg1 = `<svg width="42" height="42" viewBox="0 0 24 24" fill="none" stroke-width="1.5"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" stroke="#1a73e8" fill="rgba(26,115,232,0.05)"></path><polyline points="3.27 6.96 12 12.01 20.73 6.96" stroke="#1a73e8"></polyline><line x1="12" y1="22.08" x2="12" y2="12" stroke="#1a73e8"></line><line x1="4" y1="4" x2="20" y2="20" stroke="#ffa100" stroke-width="2.5" class="scanner-line"></line></svg>`;
+    const svg2 = `<svg width="46" height="46" viewBox="0 0 24 24" fill="none" stroke-width="1.5"><g class="spin-slow" stroke="#4caf50" fill="rgba(76,175,80,0.1)"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></g></svg>`;
+    
+    let h = '';
+    if(v01) h += Object.keys(v01).map(p => `<div onclick="routeTo('V01', '${p}')" class="project-card"><div class="p-icon-wrap">${svg1}</div><div class="p-code">${p}</div><div class="p-tag v01">설계 최적화 중</div></div>`).join('');
+    if(v02) h += Object.keys(v02).map(p => `<div onclick="routeTo('V02', '${p}')" class="project-card"><div class="p-icon-wrap">${svg2}</div><div class="p-code">${p}</div><div class="p-tag v02">양산 관제 중</div></div>`).join('');
+    
+    grid.innerHTML = h || '<div style="grid-column:1/-1;text-align:center;padding:30px;color:#999;">진행 중인 프로젝트가 없습니다.</div>';
+}
+</script>
