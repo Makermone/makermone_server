@@ -176,14 +176,15 @@ def generate_ai_bom_draft(project_code):
 # [Streamlit UI 프론트엔드]
 # ==========================================
 st.set_page_config(page_title="메이커몬 HITL 대시보드", page_icon="🏭", layout="wide")
-st.title("🏭 메이커몬 HITL 중앙 관제 대시보드 (4-Pillar)")
+st.title("🏭 메이커몬 HITL 중앙 관제 대시보드 (5-Pillar)")
 
-# 🚨 4기둥(Pillar)으로 탭 레이아웃 재편성
-tab1, tab2, tab3, tab4 = st.tabs([
-    "📋 8종 문서 승인", 
-    "🤖 능동형 Agent 리포팅", # Phase 2 신규 탭
+# 🚨 5기둥(Pillar)으로 탭 레이아웃 확장 (Tab 5 추가)
+tab1, tab2, tab3, tab4, tab5 = st.tabs([
+    "📋 8종 문서 통합 승인", 
+    "🤖 능동형 Agent 리포팅", 
     "💰 원가 혁신 관제", 
-    "🧠 AI 지능형 BOM 초안"
+    "🧠 AI 지능형 BOM 초안",
+    "👁️ 품질/수량 검수 (AI-Ready)" # 👈 [Phase 2 신규 탭]
 ])
 
 # ------------------------------------------
@@ -452,3 +453,102 @@ with tab4:
                     st.rerun()
                 else:
                     st.error(f"❌ 데이터 주입 실패: {inject_msg}")
+                    
+# ------------------------------------------
+# [탭 5] 품질/수량 수동 검수 (AI-Ready JSON 규격 변환기)
+# ------------------------------------------
+with tab5:
+    st.subheader("👁️ 현장 품질 및 수량 검수 (AI-Ready 변환기)")
+    st.markdown("엔지니어가 수동으로 입력한 검수 결과를 **미래의 Vision AI 로봇이 전송할 JSON 표준 규격**으로 변환하여 Sub DB에 적재합니다.")
+    st.divider()
+
+    # 좌우 2단 분리 레이아웃
+    col_input, col_json = st.columns([1.2, 1])
+
+    with col_input:
+        st.markdown("### 📝 검수 데이터 입력 (Human Input)")
+        
+        with st.container(border=True):
+            # 1. 대상 프로젝트 및 부품 정보
+            col_p1, col_p2 = st.columns(2)
+            with col_p1:
+                insp_project_code = st.text_input("프로젝트 식별코드", value="BH03V02", key="insp_code")
+            with col_p2:
+                insp_part_id = st.text_input("부품명 / 품번", placeholder="예: TOP-ASSY-01", key="insp_part")
+            
+            # 2. 증거물 업로드 (현재는 단순 저장, 향후 Agent 2 Vision 분석에 활용)
+            insp_image = st.file_uploader("📸 현장 조립/검수 사진 업로드 (선택)", type=['jpg', 'png', 'jpeg'])
+            
+            # 3. 수량 입력
+            st.markdown("#### 📊 수량 및 판정")
+            col_q1, col_q2 = st.columns(2)
+            with col_q1:
+                insp_ok_qty = st.number_input("✅ 양품(OK) 수량", min_value=0, value=100, step=1)
+            with col_q2:
+                insp_ng_qty = st.number_input("❌ 불량(NG) 수량", min_value=0, value=0, step=1)
+            
+            insp_total_qty = insp_ok_qty + insp_ng_qty
+            
+            # 4. 불량 상세 사유
+            insp_status = "OK" if insp_ng_qty == 0 else "NG_DETECTED"
+            insp_error_type = "없음 (전량 양품)"
+            
+            if insp_status == "NG_DETECTED":
+                insp_error_type = st.selectbox(
+                    "불량 사유 분류",
+                    options=["치수 오차 (공차 초과)", "표면 스크래치/찍힘", "조립 불량 (간섭 발생)", "후처리(아노다이징 등) 불량", "기타 수기 입력"]
+                )
+                if insp_error_type == "기타 수기 입력":
+                    insp_error_type = st.text_input("상세 불량 사유 입력")
+                    
+            insp_comment = st.text_area("엔지니어 특이사항 코멘트", placeholder="예: 치수 불량 파츠는 재가공 지시 완료함.")
+
+    with col_json:
+        st.markdown("### 🤖 전송 대기 JSON (AI-Ready Format)")
+        st.info("이 규격은 향후 Dark Factory의 비전 검수 로봇이 백엔드로 쏘아 올릴 페이로드와 100% 동일합니다.")
+        
+        # 입력된 데이터를 실시간으로 JSON 딕셔너리로 패키징
+        ai_ready_payload = {
+            "action": "submit_quality_inspection",
+            "project_code": insp_project_code.strip().upper(),
+            "inspection_data": [
+                {
+                    "part_id": insp_part_id,
+                    "total_qty": insp_total_qty,
+                    "ok_qty": insp_ok_qty,
+                    "ng_qty": insp_ng_qty,
+                    "status": insp_status,
+                    "error_type": insp_error_type,
+                    "inspector": "Human_Engineer_Proxy",
+                    "comment": insp_comment,
+                    "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                }
+            ]
+        }
+        
+        # 실시간 렌더링
+        st.json(ai_ready_payload)
+        
+        st.markdown("<br>", unsafe_allow_html=True)
+        
+        # 🚨 [전송 트리거] 백엔드 라우팅 로직
+        if st.button("🚀 검수 완료 및 DB 전송 (Sub DB 동기화)", type="primary", use_container_width=True):
+            if not insp_project_code or not insp_part_id:
+                st.error("프로젝트 식별코드와 부품명을 정확히 입력해 주세요.")
+            else:
+                with st.spinner("구글 Sub DB(Stock_Live 및 Project_Log)에 검수 데이터를 주입 중입니다..."):
+                    try:
+                        # MASTER_DB_API_URL로 POST 요청 (API.gs / Code.gs 라우터가 수신)
+                        response = requests.post(MASTER_DB_API_URL, json=ai_ready_payload, timeout=10)
+                        
+                        if response.status_code == 200:
+                            res_data = response.json()
+                            if res_data.get("status") == "success":
+                                st.success("🎉 데이터 적재 성공! 아임웹 V02 대시보드의 생산 수량과 불량률이 즉시 동기화됩니다.")
+                                st.toast("✅ 수동 검수 데이터 AI 규격 변환 및 DB 적재 완료")
+                            else:
+                                st.error(f"❌ DB 적재 실패: {res_data.get('message', '알 수 없는 오류')}")
+                        else:
+                            st.error(f"❌ 서버 통신 오류 (HTTP {response.status_code})")
+                    except Exception as e:
+                        st.error(f"❌ 네트워크 연결 실패: {str(e)}")
