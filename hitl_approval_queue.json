@@ -1,0 +1,18 @@
+[
+  {
+    "timestamp": 1779346651.7467077,
+    "agent": "PM_Agent_1",
+    "trigger_source": "Watchdog & Webhook",
+    "detected_files": [
+      "G:\\내 드라이브\\메이커몬\\관리도면\\PRE\\BH05PRE002-A.pdf",
+      "G:\\내 드라이브\\메이커몬\\관리도면\\PRE\\BH03PRE019-D.STEP",
+      "G:\\내 드라이브\\메이커몬\\관리도면\\PRE\\BH06PRE002-A.STEP",
+      "G:\\내 드라이브\\메이커몬\\관리도면\\PRE\\BH03PRE019-D.pdf",
+      "G:\\내 드라이브\\메이커몬\\관리도면\\PRE\\BH05PRE002-A.STEP",
+      "G:\\내 드라이브\\메이커몬\\관리도면\\PRE\\BH06PRE002-A.pdf"
+    ],
+    "db_events": [],
+    "proposed_action": "고객사 카카오톡 챗봇으로 신규 설계/양산 변동 알림(Push) 발송",
+    "status": "PENDING_APPROVAL"
+  }
+]
