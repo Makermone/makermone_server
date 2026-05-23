@@ -172,7 +172,8 @@ def generate_and_send():
             <div style="font-size: 13px; color: #666; line-height: 1.4;">
               <p style="margin: 0;"><b>[메이커몬 팩토리 팀]</b></p>
               <p style="margin: 0;">기구설계 기반 제품 제조 & 자동화 매니지먼트 플랫폼</p>
-              <p style="margin: 0; margin-top: 5px;">E-mail: hello@makermon.com | Web: www.makermon.com</p>
+              <p style="margin: 0; margin-top: 5px;">E-mail: aimwon01@gmail.com | Web: https://makermone.com</p>
+              <p style="margin: 0; margin-top: 5px;">본 메일은 메이커몬 AI 팩토리 시스템에 의해 자동 발송되었습니다.</p>
             </div>
           </body>
         </html>
