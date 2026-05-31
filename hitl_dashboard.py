@@ -634,6 +634,9 @@ with tab6:
     else:
         default_radio_index = 0  # PROD 모드로 기본 체크 락 주입
 
+    # ----------------------------------------------------
+    # 기존 [탭 6] 하단 'HITL 가동 모드 원격 제어' 부분을 아래 코드로 대체합니다.
+    # ----------------------------------------------------
     st.markdown("### 🕹️ HITL 가동 모드 원격 제어")
     
     selected_mode = st.radio(
@@ -641,21 +644,28 @@ with tab6:
         ("PROD 모드 [업무 시간 - 90W 전력 해제 및 CPU 가속]", 
          "ECO 모드 [심야/새벽 - 50W 압착 저전력 소모 서행]", 
          "⚡ SHUTDOWN [주말 벙커 모드 - 시스템 완전 종료]"),
-        index=default_radio_index # 👈 실시간 물리 상태 동기화 인덱스 적용 완료!
+        index=default_radio_index
     )
 
+    mode_key = "PROD" if "PROD" in selected_mode else "ECO" if "ECO" in selected_mode else "SHUTDOWN"
+    
+    # 💡 [스트림릿 상태 버그 완전 해결] 
+    # SHUTDOWN 선택 시, 안전 가드레일 체크박스를 동기화 버튼 '바깥'에 선제 렌더링하여 세션 꼬임을 방지합니다.
+    confirm_shutdown = False
+    if mode_key == "SHUTDOWN":
+        st.warning("⚠️ 경고: 서버가 완전 셧다운되면 원격으로 다시 깨울 수 없습니다. 정말 진행하시겠습니까?")
+        confirm_shutdown = st.checkbox("네, 메이커몬 공장 인프라 심장을 멈추는 것에 동의합니다.", key="strict_shutdown_lock")
+
     if st.button("🔄 모드 제어 프로필 시스템 동기화 투하", type="primary"):
-        mode_key = "PROD" if "PROD" in selected_mode else "ECO" if "ECO" in selected_mode else "SHUTDOWN"
-        
         if mode_key == "SHUTDOWN":
-            st.warning("⚠️ 경고: 서버가 완전 셧다운되면 원격으로 다시 깨울 수 없습니다. 정말 진행하시겠습니까?")
-            confirm_shutdown = st.checkbox("네, 메이커몬 공장 인프라 심장을 멈추는 것에 동의합니다.", key="strict_shutdown_lock")
             if confirm_shutdown:
-                try:
-                    res = requests.post(f"{SERVER_AGENT_URL}/control", json={"mode": "SHUTDOWN"}, timeout=3)
-                    st.error("🔥 SHUTDOWN 명령 완료. 서버 가동이 정지됩니다.")
-                except:
-                    st.error("서버가 안전 종료 단계에 진입하여 가상 터널이 끊어졌습니다. (정상적인 현상)")
+                with st.spinner("Muscle 2 인프라 완전 셧다운 명령 송신 중..."):
+                    try:
+                        # 1초 뒤 서버 하드웨어를 완전 정지시키는 API 커널 다이렉트 호출
+                        res = requests.post(f"{SERVER_AGENT_URL}/control", json={"mode": "SHUTDOWN"}, timeout=5)
+                        st.error("🔥 SHUTDOWN 명령 완료. 서버 가동이 정지됩니다.")
+                    except Exception as e:
+                        st.error("서버가 안전 종료 단계에 진입하여 가상 터널이 끊어졌습니다. (정상적인 현상)")
             else:
                 st.info("안전 잠금 장치가 발동되었습니다. 확인 체크박스를 체크한 후 실행해 주세요.")
         else:
